@@ -1,25 +1,30 @@
+mod vec;
+
+use std::fmt::Write as FmWrite;
 use std::io::Write;
+use std::thread::sleep;
+use std::error::Error;
+use vec::*;
 
 const HEIGHT: u32 = 256;
 const WIDTH: u32 = 256;
-use std::thread::sleep;
 
-fn main() {
-    println!("P3\n{} {}\n255", WIDTH, HEIGHT);
-    for i in 0..HEIGHT {
-        sleep(std::time::Duration::from_millis(20));
+fn main() -> Result<(), Box<dyn Error>> {
+    let cap = HEIGHT * WIDTH * (std::mem::size_of::<u32>() * 3) as u32;
+    let mut buf = String::with_capacity(cap as usize);
+    writeln!(&mut buf, "P3\n{} {}\n255", WIDTH, HEIGHT)?;
+    for i in (0..HEIGHT).rev() {
         eprint!("\rLines remaining: {} ", i);
-        std::io::stderr().flush();
+        std::io::stderr().flush()?;
         for j in 0..WIDTH {
-            let r = i as f32 / (WIDTH - 1) as f32;
-            let g = j as f32 / (HEIGHT - 1) as f32;
-            let b = 0.25f32;
-
-            let ir = (255.999 * r) as i32;
-            let ig = (255.999 * g) as i32;
-            let ib = (255.999 * b) as i32;
-
-            println!("{} {} {}", ir, ig, ib);
+            let color = Color::new(
+                (j as f32 / (HEIGHT - 1) as f32) as f32,
+                (i as f32 / (WIDTH - 1) as f32) as f32,
+                0.25,
+            );
+            write_color(&mut buf, &color)?;
         }
     }
+    std::fs::write("image.ppm", &buf).unwrap();
+    Ok(())
 }
