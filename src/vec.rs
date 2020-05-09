@@ -1,10 +1,11 @@
-use std::ops::{Add, AddAssign, MulAssign, DivAssign, Div, Mul};
+use std::ops::{Add, Sub, AddAssign, MulAssign, DivAssign, Div, Mul};
 use std::fmt::{Display, Formatter, Result, Write};
+use std::borrow::Borrow;
 
 pub type Point3 = Vec3;
 pub type Color = Vec3;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
 pub struct Vec3 {
     pub x: f32,
     pub y: f32,
@@ -12,17 +13,21 @@ pub struct Vec3 {
 }
 
 impl Vec3 {
+    pub const ZERO: Vec3 = Vec3 {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+    };
+    pub const ONE: Vec3 = Vec3 {
+        x: 1.0,
+        y: 1.0,
+        z: 1.0,
+    };
     pub fn new(x: f32, y: f32, z: f32) -> Vec3 {
         Vec3 { x, y, z }
     }
 
-    pub fn zero() -> Vec3 {
-        Vec3 { x: 0.0, y: 0.0, z: 0.0 }
-    }
 
-    pub fn one() -> Vec3 {
-        Vec3 { x: 1.0, y: 1.0, z: 1.0 }
-    }
     pub fn unit(&self) -> Vec3 {
         self / self.length()
     }
@@ -47,13 +52,71 @@ impl Vec3 {
     }
 }
 
-impl<'a, 'b> Add<&'b Vec3> for &'a Vec3 {
-    type Output = Vec3;
+macro_rules! impl_ops {
+    ($trait:ident $vec_type:ident $op_fn:ident $op:tt) => {
+        // Base impl for &Vec3 and &Vec3
+        impl<'a, 'b> $trait<&'a $vec_type> for &'b $vec_type {
+            type Output = $vec_type;
 
-    fn add(self, other: &'b Vec3) -> Self::Output {
-        Vec3 { x: self.x + other.x, y: self.y + other.y, z: self.z + other.z }
+            fn $op_fn(self, other: &'a $vec_type) -> Self::Output {
+                $vec_type {
+                    x: self.x $op other.x,
+                    y: self.y $op other.y,
+                    z: self.z $op other.z }
+            }
+        }
+
+        // &Vec3 and &ec3
+        impl $trait<$vec_type> for $vec_type {
+            type Output = $vec_type;
+            fn $op_fn(self, other: $vec_type) -> Self::Output {
+                &self $op &other
+            }
+        }
+
+        // &Vec3 and Vec3
+        impl<'a> $trait<&'a $vec_type> for $vec_type {
+            type Output = $vec_type;
+            fn $op_fn(self, other: &'a $vec_type) -> Self::Output {
+                &self $op other
+            }
+        }
+
+        // Vec3 and &Vec3
+        impl<'a> $trait<$vec_type> for &$vec_type {
+            type Output = $vec_type;
+            fn $op_fn(self, other: $vec_type) -> Self::Output {
+                self $op &other
+            }
+        }
+
+        // &Vec * f32
+        impl<'a> $trait<f32> for &'a $vec_type {
+            type Output = $vec_type;
+
+            fn $op_fn(self, other: f32) -> Self::Output {
+                $vec_type {
+                    x: self.x $op other,
+                    y: self.y $op other,
+                    z: self.z $op other }
+            }
+        }
+        // Vec * f32
+        impl $trait<f32> for $vec_type {
+            type Output = $vec_type;
+            fn $op_fn(self, other: f32) -> Self::Output {
+                &self $op other
+            }
+        }
+
     }
 }
+
+impl_ops!(Add Vec3 add +);
+impl_ops!(Sub Vec3 sub -);
+impl_ops!(Mul Vec3 mul *);
+impl_ops!(Div Vec3 div /);
+
 
 impl<'a> AddAssign<&'a Vec3> for Vec3 {
     fn add_assign(&mut self, other: &'a Vec3) {
@@ -63,40 +126,11 @@ impl<'a> AddAssign<&'a Vec3> for Vec3 {
     }
 }
 
-impl Mul<&Vec3> for &Vec3 {
-    type Output = Vec3;
-
-    fn mul(self, other: &Vec3) -> Self::Output {
-        Vec3 {
-            x: self.x * other.x,
-            y: self.y * other.y,
-            z: self.z * other.z,
-        }
-    }
-}
-
-impl Mul<f32> for &Vec3 {
-    type Output = Vec3;
-
-    fn mul(self, mul: f32) -> Self::Output {
-        Vec3 { x: self.x * mul, y: self.y * mul, z: self.z * mul }
-    }
-}
-
 impl<'a> MulAssign<&'a Vec3> for Vec3 {
     fn mul_assign(&mut self, other: &'a Vec3) {
         self.x *= other.x;
         self.y *= other.y;
         self.z *= other.z;
-    }
-}
-
-
-impl Div<f32> for &Vec3 {
-    type Output = Vec3;
-
-    fn div(self, div: f32) -> Self::Output {
-        Vec3 { x: self.x / div, y: self.y / div, z: self.z / div }
     }
 }
 

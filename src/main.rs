@@ -1,4 +1,5 @@
 mod vec;
+mod ray;
 
 use std::fmt::Write as FmWrite;
 use std::io::Write;
