@@ -1,13 +1,22 @@
 mod vec;
 mod ray;
+mod sphere;
+mod hittable;
 
 use std::fmt::Write as FmWrite;
 use std::io::Write;
 use std::error::Error;
 use vec::*;
 use ray::Ray;
+use sphere::Sphere;
+use hittable::Hittable;
 use std::process::Command;
 use std::time::{Duration, Instant};
+use std::rc::Rc;
+use crate::hittable::HitRecord;
+
+
+type World = Vec<Rc<dyn Hittable>>;
 
 
 fn hit_sphere(center: Point3, radius: f32, ray: &Ray) -> f32 {
@@ -23,12 +32,11 @@ fn hit_sphere(center: Point3, radius: f32, ray: &Ray) -> f32 {
     };
 }
 
-fn ray_color(ray: &Ray) -> Color {
-    let hit = hit_sphere(Point3::new(0.0, 0.0, -1.0), 0.5, ray);
-    if hit > 0.0
-    {
-        let n = Vec3::unit(&(ray.at(hit) - Vec3::new(0.0, 0.0, -1.0)));
-        return Color::new(n.x + 1., n.y + 1., n.z + 1.) * 0.5;
+fn ray_color(ray: &Ray, world: &World) -> Color {
+    let mut rec = HitRecord::default();
+
+    if world.hit(ray, 0.0, f32::INFINITY, &mut rec) {
+        return (rec.normal + Color::ONE) * 0.5;
     }
     let dir = Vec3::unit(&ray.direction);
     let t = 0.5 * (dir.y + 1.0);
@@ -48,6 +56,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let vertical = Vec3::new(0.0, 2.25, 0.0);
     let lower_left = origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, 1.0);
     let start_time = Instant::now();
+
+    let mut world = World::new();
+    world.push(Rc::new(Sphere::new((0.0 ,0.0 ,-1.0), 0.5)));
+    world.push(Rc::new(Sphere::new((0.0 ,-100.5 ,-1.0), 100.0)));
+
     for i in (0..IMAGE_HEIGHT).rev() {
         eprint!("\rLines remaining: {} ", i);
         std::io::stderr().flush()?;
@@ -56,7 +69,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let v = i as f32 / (IMAGE_HEIGHT - 1) as f32;
             let dir = lower_left + horizontal * u + vertical * v;
             let ray = Ray::new(&origin, &dir);
-            let color = ray_color(&ray);
+            let color = ray_color(&ray, &world);
             write_color(&mut buf, &color)?;
         }
     }

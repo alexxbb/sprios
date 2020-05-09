@@ -1,9 +1,9 @@
-use std::ops::{Add, Sub, AddAssign, MulAssign, DivAssign, Div, Mul};
+use std::ops::{Add, Sub, AddAssign, MulAssign, DivAssign, Div, Mul, Neg};
 
 pub type Point3 = Vec3;
 pub type Color = Vec3;
 
-#[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialOrd, PartialEq, Default)]
 pub struct Vec3 {
     pub x: f32,
     pub y: f32,
@@ -126,6 +126,22 @@ impl_ops!(Add Vec3 add +);
 impl_ops!(Sub Vec3 sub -);
 impl_ops!(Mul Vec3 mul *);
 impl_ops!(Div Vec3 div /);
+
+impl Neg for &Vec3 {
+    type Output = Vec3;
+
+    fn neg(self) -> Self::Output {
+        Vec3 { x: -self.x, y: -self.y, z: -self.z }
+    }
+}
+
+impl Neg for Vec3 {
+    type Output = Vec3;
+
+    fn neg(self) -> Self::Output {
+        Vec3 { x: -self.x, y: -self.y, z: -self.z }
+    }
+}
 
 
 impl<'a> AddAssign<&'a Vec3> for Vec3 {
