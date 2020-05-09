@@ -1,6 +1,4 @@
 use std::ops::{Add, Sub, AddAssign, MulAssign, DivAssign, Div, Mul};
-use std::fmt::{Display, Formatter, Result, Write};
-use std::borrow::Borrow;
 
 pub type Point3 = Vec3;
 pub type Color = Vec3;
@@ -10,6 +8,18 @@ pub struct Vec3 {
     pub x: f32,
     pub y: f32,
     pub z: f32,
+}
+
+impl From<(f32, f32, f32)> for Vec3 {
+    fn from(t: (f32, f32, f32)) -> Self {
+        Vec3 { x: t.0, y: t.1, z: t.2 }
+    }
+}
+
+impl From<&[f32; 3]> for Vec3 {
+    fn from(a: &[f32; 3]) -> Self {
+        Vec3 { x: a[0], y: a[1], z: a[2] }
+    }
 }
 
 impl Vec3 {
@@ -28,8 +38,8 @@ impl Vec3 {
     }
 
 
-    pub fn unit(&self) -> Vec3 {
-        self / self.length()
+    pub fn unit(vec: &Vec3) -> Vec3 {
+        vec / vec.length()
     }
 
     pub fn length(&self) -> f32 {
