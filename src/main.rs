@@ -12,14 +12,14 @@ use std::time::{Duration, Instant};
 
 fn hit_sphere(center: Point3, radius: f32, ray: &Ray) -> f32 {
     let oc = ray.origin - center;
-    let a = Vec3::dot(&ray.direction, &ray.direction);
-    let b = 2.0 * Vec3::dot(&oc, &ray.direction);
-    let c = Vec3::dot(&oc, &oc) - radius * radius;
-    let descr = b * b - 4.0 * a * c;
+    let a = ray.direction.length_squared();
+    let half_b = Vec3::dot(&oc, &ray.direction);
+    let c = oc.length_squared() - radius * radius;
+    let descr = half_b * half_b - a * c;
     return if descr < 0.0 {
         -1.0
     } else {
-        (-b - descr.sqrt()) / (2.0 * a)
+        (-half_b - descr.sqrt()) / 2.0
     };
 }
 
@@ -62,8 +62,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
     std::fs::write("image.ppm", &buf).unwrap();
     eprintln!("\nDone in {}ms", start_time.elapsed().as_millis());
-    Command::new("nomacs")
-        .arg("--mode").arg("frameless")
-        .arg("image.ppm").spawn()?;
+    // Command::new("nomacs")
+    //     .arg("--mode").arg("frameless")
+    //     .arg("image.ppm").spawn()?;
     Ok(())
 }
