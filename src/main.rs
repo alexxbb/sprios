@@ -6,6 +6,7 @@ use std::io::Write;
 use std::error::Error;
 use vec::*;
 use ray::Ray;
+use std::time::{Duration, Instant};
 
 
 fn hit_sphere(center: Point3, radius: f32, ray: &Ray) -> bool {
@@ -38,6 +39,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let horizontal = Vec3::new(4.0, 0.0, 0.0);
     let vertical = Vec3::new(0.0, 2.25, 0.0);
     let lower_left = origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, 1.0);
+    let start_time = Instant::now();
     for i in (0..IMAGE_HEIGHT).rev() {
         eprint!("\rLines remaining: {} ", i);
         std::io::stderr().flush()?;
@@ -51,5 +53,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
     std::fs::write("image.ppm", &buf).unwrap();
+    eprintln!("\nDone in {}ms", start_time.elapsed().as_millis());
     Ok(())
 }
