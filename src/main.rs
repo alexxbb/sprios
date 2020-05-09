@@ -6,24 +6,32 @@ use std::io::Write;
 use std::error::Error;
 use vec::*;
 use ray::Ray;
+use std::process::Command;
 use std::time::{Duration, Instant};
 
 
-fn hit_sphere(center: Point3, radius: f32, ray: &Ray) -> bool {
+fn hit_sphere(center: Point3, radius: f32, ray: &Ray) -> f32 {
     let oc = ray.origin - center;
     let a = Vec3::dot(&ray.direction, &ray.direction);
     let b = 2.0 * Vec3::dot(&oc, &ray.direction);
     let c = Vec3::dot(&oc, &oc) - radius * radius;
     let descr = b * b - 4.0 * a * c;
-    descr > 0.0
+    return if descr < 0.0 {
+        -1.0
+    } else {
+        (-b - descr.sqrt()) / (2.0 * a)
+    };
 }
 
 fn ray_color(ray: &Ray) -> Color {
-    if hit_sphere(Point3::new(0.0, 0.0, -1.0), 0.5, ray) {
-        return Color::new(1.0, 0.0, 0.0);
+    let hit = hit_sphere(Point3::new(0.0, 0.0, -1.0), 0.5, ray);
+    if hit > 0.0
+    {
+        let n = Vec3::unit(&(ray.at(hit) - Vec3::new(0.0, 0.0, -1.0)));
+        return Color::new(n.x + 1., n.y + 1., n.z + 1.) * 0.5;
     }
     let dir = Vec3::unit(&ray.direction);
-    let t = 0.5 * dir.y + 1.0;
+    let t = 0.5 * (dir.y + 1.0);
     Color::new(1.0, 1.0, 1.0) * (1.0 - t) + Color::new(0.5, 0.7, 1.0) * t
 }
 
@@ -54,5 +62,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
     std::fs::write("image.ppm", &buf).unwrap();
     eprintln!("\nDone in {}ms", start_time.elapsed().as_millis());
+    Command::new("nomacs")
+        .arg("--mode").arg("frameless")
+        .arg("image.ppm").spawn()?;
     Ok(())
 }
