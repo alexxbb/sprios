@@ -1,4 +1,6 @@
 use std::ops::{Add, Sub, AddAssign, MulAssign, DivAssign, Div, Mul, Neg};
+use rand;
+use rand::Rng;
 
 pub type Point3 = Vec3;
 pub type Color = Vec3;
@@ -59,6 +61,34 @@ impl Vec3 {
             y: u.z * v.x - u.x * v.z,
             z: u.x * v.y - u.y * v.x,
         }
+    }
+    pub fn random() -> Self {
+        Self::random_in(0.0, 1.0)
+    }
+
+    pub fn random_in(min: f32, max: f32) -> Self {
+        let mut rng = rand::thread_rng();
+        Vec3 {
+            x: rng.gen_range(min, max),
+            y: rng.gen_range(min, max),
+            z: rng.gen_range(min, max),
+        }
+    }
+
+    pub fn random_in_unit_sphere() -> Self {
+        loop {
+            let p = Self::random();
+            if p.length_squared() >= 1.0 { continue; }
+            return p;
+        }
+    }
+
+    pub fn random_unit_vector() -> Self {
+        let mut rng = rand::thread_rng();
+        let a = rng.gen_range(0.0, 2.0 * std::f32::consts::PI);
+        let z = rng.gen_range(-1.0f32, 1.0f32);
+        let r = (1.0 - z * z).sqrt();
+        return Vec3 { x: r * f32::cos(a), y: r * f32::sin(a), z };
     }
 }
 

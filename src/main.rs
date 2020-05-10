@@ -24,11 +24,17 @@ use hittable::{Hittable, HitRecord};
 
 type World = Vec<Rc<dyn Hittable>>;
 
-fn ray_color(ray: &Ray, world: &World) -> Color {
+fn ray_color(ray: &Ray, world: &World, depth: u32) -> Color {
     let mut rec = HitRecord::default();
+    if depth == 0 {
+        // Max recursion depth reached
+        return Color::ZERO
+    }
 
-    if world.hit(ray, 0.0, f32::INFINITY, &mut rec) {
-        return (rec.normal + Color::ONE) * 0.5;
+    if world.hit(ray, 0.001, f32::INFINITY, &mut rec) {
+        let target = rec.p + rec.normal + Vec3::random_unit_vector();
+        return ray_color(&Ray::new(&rec.p, &(target - rec.p)), world, depth - 1) * 0.5
+        // return (rec.normal + Color::ONE) * 0.5;
     }
     let dir = Vec3::unit(&ray.direction);
     let t = 0.5 * (dir.y + 1.0);
@@ -41,6 +47,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     const image_width: u32 = 384;
     const image_height: u32 = (image_width as f32 / aspect_ratio) as u32;
     const samples_per_pixel: u32 = 10;
+    const max_depth:u32 = 10;
     let cap = image_height * image_width * (std::mem::size_of::<u32>() * 3) as u32;
     let mut buf = String::with_capacity(cap as usize);
     writeln!(&mut buf, "P3\n{} {}\n255", image_width, image_height)?;
@@ -62,7 +69,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let u = (j as f32 + rng.gen::<f32>() ) / (image_width - 1) as f32;
                 let v = (i as f32 + rng.gen::<f32>() )/ (image_height - 1) as f32;
                 let ray = camera.get_ray(u, v);
-                pixel_color += &ray_color(&ray, &world);
+                pixel_color += &ray_color(&ray, &world, max_depth);
             }
             write_color(&mut buf, &pixel_color, samples_per_pixel)?;
         }
