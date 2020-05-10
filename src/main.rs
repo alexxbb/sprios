@@ -2,35 +2,27 @@ mod vec;
 mod ray;
 mod sphere;
 mod hittable;
+mod camera;
+mod color;
+mod utils;
 
 use std::fmt::Write as FmWrite;
 use std::io::Write;
 use std::error::Error;
+use std::time::{Instant};
+use std::rc::Rc;
+use rand::Rng;
+
+use utils::*;
 use vec::*;
 use ray::Ray;
 use sphere::Sphere;
-use hittable::Hittable;
-use std::process::Command;
-use std::time::{Duration, Instant};
-use std::rc::Rc;
-use crate::hittable::HitRecord;
+use color::write_color;
+use camera::Camera;
+use hittable::{Hittable, HitRecord};
 
 
 type World = Vec<Rc<dyn Hittable>>;
-
-
-fn hit_sphere(center: Point3, radius: f32, ray: &Ray) -> f32 {
-    let oc = ray.origin - center;
-    let a = ray.direction.length_squared();
-    let half_b = Vec3::dot(&oc, &ray.direction);
-    let c = oc.length_squared() - radius * radius;
-    let descr = half_b * half_b - a * c;
-    return if descr < 0.0 {
-        -1.0
-    } else {
-        (-half_b - descr.sqrt()) / 2.0
-    };
-}
 
 fn ray_color(ray: &Ray, world: &World) -> Color {
     let mut rec = HitRecord::default();
@@ -43,34 +35,36 @@ fn ray_color(ray: &Ray, world: &World) -> Color {
     Color::new(1.0, 1.0, 1.0) * (1.0 - t) + Color::new(0.5, 0.7, 1.0) * t
 }
 
+#[allow(non_upper_case_globals)]
 fn main() -> Result<(), Box<dyn Error>> {
-    const ASPECT_RATIO: f32 = 16.0 / 9.0;
-    const IMAGE_WIDTH: u32 = 384;
-    const IMAGE_HEIGHT: u32 = (IMAGE_WIDTH as f32 / ASPECT_RATIO) as u32;
-    let cap = IMAGE_HEIGHT * IMAGE_WIDTH * (std::mem::size_of::<u32>() * 3) as u32;
+    const aspect_ratio: f32 = 16.0 / 9.0;
+    const image_width: u32 = 384;
+    const image_height: u32 = (image_width as f32 / aspect_ratio) as u32;
+    const samples_per_pixel: u32 = 10;
+    let cap = image_height * image_width * (std::mem::size_of::<u32>() * 3) as u32;
     let mut buf = String::with_capacity(cap as usize);
-    writeln!(&mut buf, "P3\n{} {}\n255", IMAGE_WIDTH, IMAGE_HEIGHT)?;
+    writeln!(&mut buf, "P3\n{} {}\n255", image_width, image_height)?;
 
-    let origin = Point3::ZERO;
-    let horizontal = Vec3::new(4.0, 0.0, 0.0);
-    let vertical = Vec3::new(0.0, 2.25, 0.0);
-    let lower_left = origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, 1.0);
     let start_time = Instant::now();
 
+    let camera = Camera::new();
     let mut world = World::new();
-    world.push(Rc::new(Sphere::new((0.0 ,0.0 ,-1.0), 0.5)));
-    world.push(Rc::new(Sphere::new((0.0 ,-100.5 ,-1.0), 100.0)));
+    world.push(Rc::new(Sphere::new((0.0, 0.0, -1.0), 0.5)));
+    world.push(Rc::new(Sphere::new((0.0, -100.5, -1.0), 100.0)));
 
-    for i in (0..IMAGE_HEIGHT).rev() {
+    let mut rng = rand::thread_rng();
+    for i in (0..image_height).rev() {
         eprint!("\rLines remaining: {} ", i);
         std::io::stderr().flush()?;
-        for j in 0..IMAGE_WIDTH {
-            let u = j as f32 / (IMAGE_WIDTH - 1) as f32;
-            let v = i as f32 / (IMAGE_HEIGHT - 1) as f32;
-            let dir = lower_left + horizontal * u + vertical * v;
-            let ray = Ray::new(&origin, &dir);
-            let color = ray_color(&ray, &world);
-            write_color(&mut buf, &color)?;
+        for j in 0..image_width {
+            let mut pixel_color = Color::ZERO;
+            for _ in 0..samples_per_pixel {
+                let u = (j as f32 + rng.gen::<f32>() ) / (image_width - 1) as f32;
+                let v = (i as f32 + rng.gen::<f32>() )/ (image_height - 1) as f32;
+                let ray = camera.get_ray(u, v);
+                pixel_color += &ray_color(&ray, &world);
+            }
+            write_color(&mut buf, &pixel_color, samples_per_pixel)?;
         }
     }
     std::fs::write("image.ppm", &buf).unwrap();

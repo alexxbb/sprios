@@ -168,10 +168,3 @@ impl<'a> DivAssign<&'a Vec3> for Vec3 {
     }
 }
 
-pub fn write_color(writer: &mut impl std::fmt::Write, clr: &Color) -> std::fmt::Result {
-    writeln!(writer, "{} {} {}",
-             (255.999 * clr.x) as u32,
-             (255.999 * clr.y) as u32,
-             (255.999 * clr.z) as u32,
-    )
-}
