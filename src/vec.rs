@@ -83,6 +83,14 @@ impl Vec3 {
         }
     }
 
+    pub fn random_in_hemisphere(normal: &Vec3) -> Self {
+        let in_unit_sphere = Vec3::random_in_unit_sphere();
+        if Vec3::dot(&in_unit_sphere, normal) > 0.0 {
+            return in_unit_sphere
+        }
+        return -in_unit_sphere
+    }
+
     pub fn random_unit_vector() -> Self {
         let mut rng = rand::thread_rng();
         let a = rng.gen_range(0.0, 2.0 * std::f32::consts::PI);

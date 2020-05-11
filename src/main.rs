@@ -32,7 +32,7 @@ fn ray_color(ray: &Ray, world: &World, depth: u32) -> Color {
     }
 
     if world.hit(ray, 0.001, f32::INFINITY, &mut rec) {
-        let target = rec.p + rec.normal + Vec3::random_unit_vector();
+        let target = rec.p + Vec3::random_in_hemisphere(&rec.normal);
         return ray_color(&Ray::new(&rec.p, &(target - rec.p)), world, depth - 1) * 0.5
         // return (rec.normal + Color::ONE) * 0.5;
     }
