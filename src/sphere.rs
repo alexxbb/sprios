@@ -20,7 +20,6 @@ impl Sphere {
 
 impl Hittable for Sphere {
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
-        let mut rec = HitRecord::new(Rc::clone(&self.material));
         let oc = ray.origin - self.center;
         let a = ray.direction.length_squared();
         let half_b = Vec3::dot(&oc, &ray.direction);
@@ -30,6 +29,7 @@ impl Hittable for Sphere {
             let root = discriminant.sqrt();
             let temp = (-half_b - root) / a;
             if temp < t_max && temp > t_min {
+                let mut rec = HitRecord::new(Rc::clone(&self.material));
                 rec.t = temp;
                 rec.p = ray.at(temp);
                 let outward_normal = (rec.p - self.center) / self.radius;
@@ -38,6 +38,7 @@ impl Hittable for Sphere {
             }
             let temp = (-half_b + root) / a;
             if temp < t_max && temp > t_min {
+                let mut rec = HitRecord::new(Rc::clone(&self.material));
                 rec.t = temp;
                 rec.p = ray.at(temp);
                 let outward_normal = (rec.p - self.center) / self.radius;
