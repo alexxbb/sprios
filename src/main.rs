@@ -12,8 +12,8 @@ use std::error::Error;
 use std::time::{Instant};
 use std::rc::Rc;
 use rand::Rng;
+use getopts;
 
-use utils::*;
 use vec::*;
 use ray::Ray;
 use sphere::Sphere;
@@ -43,11 +43,30 @@ fn ray_color(ray: &Ray, world: &World, depth: u32) -> Color {
 
 #[allow(non_upper_case_globals)]
 fn main() -> Result<(), Box<dyn Error>> {
+    let args:Vec<String> = std::env::args().collect();
     const aspect_ratio: f32 = 16.0 / 9.0;
-    const image_width: u32 = 384;
-    const image_height: u32 = (image_width as f32 / aspect_ratio) as u32;
-    const samples_per_pixel: u32 = 10;
     const max_depth:u32 = 10;
+
+    let mut opts = getopts::Options::new();
+    opts.optopt("w", "width", "Image width", "WIDTH");
+    opts.optopt("s", "samples", "Pixel samples", "SAMPLES");
+    opts.optflag("h", "help", "print help");
+
+    let args = match opts.parse(args) {
+        Ok(m) => m,
+        Err(e) => {panic!(e.to_string())}
+    };
+
+    let image_width: u32 = match args.opt_str("w") {
+        Some(s) => {s.parse().unwrap()},
+        None => 386
+    };
+    let image_height: u32 = (image_width as f32 / aspect_ratio) as u32;
+    let samples_per_pixel: u32 = match args.opt_str("s") {
+        Some(s) => {s.parse().unwrap()},
+        None=> 10
+    };
+
     let cap = image_height * image_width * (std::mem::size_of::<u32>() * 3) as u32;
     let mut buf = String::with_capacity(cap as usize);
     writeln!(&mut buf, "P3\n{} {}\n255", image_width, image_height)?;
@@ -61,7 +80,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut rng = rand::thread_rng();
     for i in (0..image_height).rev() {
-        eprint!("\rLines remaining: {} ", i);
+        let cur_line = image_height - i;
+        let prog =  (cur_line as f32 / image_height as f32) * 100.0;
+        eprint!("\rRendering: {}%", prog as u32);
         std::io::stderr().flush()?;
         for j in 0..image_width {
             let mut pixel_color = Color::ZERO;
@@ -76,8 +97,5 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
     std::fs::write("image.ppm", &buf).unwrap();
     eprintln!("\nDone in {}ms", start_time.elapsed().as_millis());
-    // Command::new("nomacs")
-    //     .arg("--mode").arg("frameless")
-    //     .arg("image.ppm").spawn()?;
     Ok(())
 }
