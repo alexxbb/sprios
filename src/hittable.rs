@@ -18,25 +18,23 @@ impl HitRecord {
 }
 
 pub trait Hittable {
-    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32, hit_record: &mut HitRecord) -> bool;
+    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord>;
 }
 
 impl Hittable for Vec<Rc<dyn Hittable>> {
-    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32, rec: &mut HitRecord) -> bool {
+    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
         let mut temp_rec = HitRecord::default();
         let mut hit_anything = false;
         let mut closest_so_far = t_max;
 
         for obj in self {
-            if obj.hit(ray, t_min, closest_so_far, &mut temp_rec) {
+            if let Some(hit) = obj.hit(ray, t_min, closest_so_far) {
                 hit_anything = true;
-                closest_so_far = temp_rec.t;
-                *rec = temp_rec;
-
+                closest_so_far = hit.t;
+                temp_rec = hit
             }
         }
-        hit_anything
-
+        if hit_anything {Some(temp_rec)} else {None}
     }
 }
 

@@ -31,10 +31,9 @@ fn ray_color(ray: &Ray, world: &World, depth: u32) -> Color {
         return Color::ZERO
     }
 
-    if world.hit(ray, 0.001, f32::INFINITY, &mut rec) {
+    if let Some(rec) = world.hit(ray, 0.001, f32::INFINITY) {
         let target = rec.p + Vec3::random_in_hemisphere(&rec.normal);
         return ray_color(&Ray::new(&rec.p, &(target - rec.p)), world, depth - 1) * 0.5
-        // return (rec.normal + Color::ONE) * 0.5;
     }
     let dir = Vec3::unit(&ray.direction);
     let t = 0.5 * (dir.y + 1.0);

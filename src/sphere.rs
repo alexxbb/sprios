@@ -16,7 +16,8 @@ impl Sphere {
 }
 
 impl Hittable for Sphere {
-    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32, rec: &mut HitRecord) -> bool {
+    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
+        let mut rec = HitRecord::default();
         let oc = ray.origin - self.center;
         let a = ray.direction.length_squared();
         let half_b = Vec3::dot(&oc, &ray.direction);
@@ -30,7 +31,7 @@ impl Hittable for Sphere {
                 rec.p = ray.at(temp);
                 let outward_normal = (rec.p - self.center) / self.radius;
                 rec.set_face_normal(ray, &outward_normal);
-                return true;
+                return Some(rec)
             }
             let temp = (-half_b + root) / a;
             if temp < t_max && temp > t_min {
@@ -38,9 +39,9 @@ impl Hittable for Sphere {
                 rec.p = ray.at(temp);
                 let outward_normal = (rec.p - self.center) / self.radius;
                 rec.set_face_normal(ray, &outward_normal);
-                return true;
+                return Some(rec)
             }
         }
-        false
+        None
     }
 }
