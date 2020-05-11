@@ -57,6 +57,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         Err(e) => {panic!(e.to_string())}
     };
 
+    if args.opt_present("h") {
+        println!("{}", opts.short_usage("SPRIOS"));
+        return Ok(())
+    }
+
     let image_width: u32 = match args.opt_str("w") {
         Some(s) => {s.parse().unwrap()},
         None => 386
