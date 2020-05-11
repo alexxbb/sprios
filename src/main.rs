@@ -5,6 +5,7 @@ mod hittable;
 mod camera;
 mod color;
 mod utils;
+mod material;
 
 use std::fmt::Write as FmWrite;
 use std::io::Write;
@@ -25,7 +26,6 @@ use hittable::{Hittable, HitRecord};
 type World = Vec<Rc<dyn Hittable>>;
 
 fn ray_color(ray: &Ray, world: &World, depth: u32) -> Color {
-    let mut rec = HitRecord::default();
     if depth == 0 {
         // Max recursion depth reached
         return Color::ZERO
