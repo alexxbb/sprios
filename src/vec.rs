@@ -40,8 +40,8 @@ impl Vec3 {
     }
 
 
-    pub fn unit(vec: &Vec3) -> Vec3 {
-        vec / vec.length()
+    pub fn unit(&self) -> Vec3 {
+        self / self.length()
     }
 
     pub fn length(&self) -> f32 {
@@ -52,8 +52,8 @@ impl Vec3 {
         self.x * self.x + self.y * self.y + self.z * self.z
     }
 
-    pub fn dot(l: &Vec3, r: &Vec3) -> f32 {
-        l.x * r.x + l.y * r.y + l.z * r.z
+    pub fn dot(&self, r: &Vec3) -> f32 {
+        self.x * r.x + self.y * r.y + self.z * r.z
     }
     pub fn cross(u: &Vec3, v: &Vec3) -> Vec3 {
         Vec3 {
@@ -61,6 +61,9 @@ impl Vec3 {
             y: u.z * v.x - u.x * v.z,
             z: u.x * v.y - u.y * v.x,
         }
+    }
+    pub fn reflect(&self, other: &Vec3) -> Vec3 {
+        self - other * 2.0 * self.dot(other)
     }
     pub fn random() -> Self {
         Self::random_in(0.0, 1.0)
@@ -86,9 +89,9 @@ impl Vec3 {
     pub fn random_in_hemisphere(normal: &Vec3) -> Self {
         let in_unit_sphere = Vec3::random_in_unit_sphere();
         if Vec3::dot(&in_unit_sphere, normal) > 0.0 {
-            return in_unit_sphere
+            return in_unit_sphere;
         }
-        return -in_unit_sphere
+        return -in_unit_sphere;
     }
 
     pub fn random_unit_vector() -> Self {

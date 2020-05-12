@@ -1,17 +1,43 @@
 use crate::hittable::HitRecord;
 use crate::ray::Ray;
-use crate::vec::Color;
-use std::fmt::Debug;
+use crate::vec::{Vec3, Color};
 
 pub trait Material {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord, attenuation: &Color, scattered: &Ray) -> bool;
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<Ray>;
+    fn color(&self) -> &Color;
 }
 
-pub struct DefaultMaterial;
+pub struct Lambertian {
+    pub color: Color,
+}
 
-impl Material for DefaultMaterial {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord, attenuation: &Color, scattered: &Ray) -> bool {
-        unimplemented!()
+pub struct Metal {
+    pub color: Color,
+}
+
+impl Material for Lambertian {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<Ray> {
+        let scatter_direction = &rec.normal + Vec3::random_unit_vector();
+        Some(Ray::new(&rec.p, &scatter_direction))
+    }
+
+    fn color(&self) -> &Color {
+        &self.color
+    }
+}
+
+impl Material for Metal {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<Ray> {
+        let reflected = r_in.direction.unit().reflect(&rec.normal);
+        let scattered = Ray::new(&rec.p, &reflected);
+        if scattered.direction.dot(&rec.normal) > 0.0 {
+            return Some(scattered);
+        }
+        None
+    }
+
+    fn color(&self) -> &Color {
+        &self.color
     }
 }
 

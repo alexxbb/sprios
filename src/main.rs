@@ -21,6 +21,8 @@ use sphere::Sphere;
 use color::write_color;
 use camera::Camera;
 use hittable::{Hittable, HitRecord};
+use crate::material::{Material, Metal, Lambertian};
+use std::ops::Deref;
 
 
 type World = Vec<Rc<dyn Hittable>>;
@@ -32,10 +34,12 @@ fn ray_color(ray: &Ray, world: &World, depth: u32) -> Color {
     }
 
     if let Some(rec) = world.hit(ray, 0.001, f32::INFINITY) {
-        let target = rec.p + Vec3::random_in_hemisphere(&rec.normal);
-        return ray_color(&Ray::new(&rec.p, &(target - rec.p)), world, depth - 1) * 0.5
+        if let Some(ray) = rec.mat.scatter(ray, &rec) {
+            return rec.mat.color() * ray_color(&ray, world, depth - 1)
+        }
+        return Color::ZERO;
     }
-    let dir = Vec3::unit(&ray.direction);
+    let dir = ray.direction.unit();
     let t = 0.5 * (dir.y + 1.0);
     Color::new(1.0, 1.0, 1.0) * (1.0 - t) + Color::new(0.5, 0.7, 1.0) * t
 }
@@ -79,8 +83,35 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let camera = Camera::new();
     let mut world = World::new();
-    world.push(Rc::new(Sphere::new((0.0, 0.0, -1.0), 0.5)));
-    world.push(Rc::new(Sphere::new((0.0, -100.5, -1.0), 100.0)));
+    // Globe sphere
+    world.push(Rc::new(
+        Sphere::new(
+            (0.0, -100.5, -1.0),
+            100.0,
+            Rc::new(Lambertian { color: (0.5, 0.5, 0.5).into() }),
+        )));
+    // Red
+    world.push(
+        Rc::new(Sphere::new(
+            (-1.0, 0.0, -1.0),
+            0.5,
+            Rc::new(Metal { color: (0.9, 0.1, 0.1).into() })
+        )));
+    // Green
+    world.push(
+        Rc::new(Sphere::new(
+            (1.0, 0.0, -1.0),
+            0.5,
+            Rc::new(Metal { color: (0.1, 0.9, 0.1).into() })
+        )));
+    // Blue
+    world.push(
+        Rc::new(Sphere::new(
+            (0.0, 0.0, -1.0),
+            0.5,
+            Rc::new(Metal { color: (0.1, 0.1, 0.9).into() })
+        )));
+
 
     let mut rng = rand::thread_rng();
     for i in (0..image_height).rev() {

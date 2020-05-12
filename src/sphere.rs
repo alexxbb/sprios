@@ -1,7 +1,7 @@
 use crate::hittable::{Hittable, HitRecord};
 use crate::ray::Ray;
 use crate::vec::*;
-use crate::material::{Material, DefaultMaterial};
+use crate::material::{Material, Lambertian};
 use std::rc::Rc;
 
 
@@ -9,12 +9,16 @@ use std::rc::Rc;
 pub struct Sphere {
     pub center: Point3,
     pub radius: f32,
-    pub material: Rc<dyn Material>
+    pub material: Rc<dyn Material>,
 }
 
 impl Sphere {
-    pub fn new<P: Into<Point3> >(center: P, radius: f32) -> Sphere{
-        Sphere{center: center.into(), radius, material: Rc::new(DefaultMaterial{})}
+    pub fn new<P: Into<Point3>>(center: P, radius: f32, mat: Rc<dyn Material>) -> Sphere {
+        Sphere {
+            center: center.into(),
+            radius,
+            material: mat
+        }
     }
 }
 
@@ -22,7 +26,7 @@ impl Hittable for Sphere {
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
         let oc = ray.origin - self.center;
         let a = ray.direction.length_squared();
-        let half_b = Vec3::dot(&oc, &ray.direction);
+        let half_b = oc.dot(&ray.direction);
         let c = oc.length_squared() - self.radius * self.radius;
         let discriminant = half_b * half_b - a * c;
         if discriminant > 0.0 {
@@ -34,7 +38,7 @@ impl Hittable for Sphere {
                 rec.p = ray.at(temp);
                 let outward_normal = (rec.p - self.center) / self.radius;
                 rec.set_face_normal(ray, &outward_normal);
-                return Some(rec)
+                return Some(rec);
             }
             let temp = (-half_b + root) / a;
             if temp < t_max && temp > t_min {
@@ -43,7 +47,7 @@ impl Hittable for Sphere {
                 rec.p = ray.at(temp);
                 let outward_normal = (rec.p - self.center) / self.radius;
                 rec.set_face_normal(ray, &outward_normal);
-                return Some(rec)
+                return Some(rec);
             }
         }
         None
