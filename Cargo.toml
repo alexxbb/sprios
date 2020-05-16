@@ -10,10 +10,6 @@ edition = "2018"
 name = "main"
 path = "src/main.rs"
 
-[[bin]]
-name = "gui"
-path = "src/gui/window.rs"
-
 [dependencies]
 rand = "0.7.3"
 getopts = "0.2.21"
@@ -21,6 +17,12 @@ getopts = "0.2.21"
 [dependencies.gtk]
 version = "0.8.1"
 features = ["v3_16"]
+
+[dependencies.gdk-pixbuf]
+version = "0.8.0"
+
+[dependencies.gdk]
+version = "0.12.1"
 
 [dependencies.gio]
 version = ""
