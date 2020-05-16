@@ -16,7 +16,7 @@ pub struct Metal {
 }
 
 impl Material for Lambertian {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<Ray> {
+    fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<Ray> {
         let scatter_direction = &rec.normal + Vec3::random_unit_vector();
         Some(Ray::new(&rec.p, &scatter_direction))
     }

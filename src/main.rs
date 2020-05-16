@@ -20,9 +20,8 @@ use ray::Ray;
 use sphere::Sphere;
 use color::write_color;
 use camera::Camera;
-use hittable::{Hittable, HitRecord};
-use crate::material::{Material, Metal, Lambertian};
-use std::ops::Deref;
+use hittable::{Hittable};
+use crate::material::{Metal, Lambertian};
 
 
 type World = Vec<Rc<dyn Hittable>>;

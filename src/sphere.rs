@@ -1,7 +1,7 @@
 use crate::hittable::{Hittable, HitRecord};
 use crate::ray::Ray;
 use crate::vec::*;
-use crate::material::{Material, Lambertian};
+use crate::material::{Material };
 use std::rc::Rc;
 
 
