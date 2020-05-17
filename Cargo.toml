@@ -20,9 +20,13 @@ features = ["v3_16"]
 
 [dependencies.gdk-pixbuf]
 version = "0.8.0"
+features = ["dox"]
 
 [dependencies.gdk]
 version = "0.12.1"
+
+[dependencies.glib]
+version = "0.9.3"
 
 [dependencies.gio]
 version = ""
