@@ -31,6 +31,7 @@ use sphere::Sphere;
 use std::cell::RefCell;
 use std::io::{BufWriter, Read, Write};
 use std::ops::DerefMut;
+use std::sync::{Arc, Mutex};
 use vec::*;
 
 type World = Vec<Rc<dyn Hittable>>;
@@ -80,25 +81,24 @@ fn build_ui(app: &gtk::Application) {
     let image_width: u32 = 386;
     let image_height: u32 = (image_width as f32 / ASPECT_RATIO) as u32;
     let cap = (image_height * image_width * 3) as usize;
-    let mut buf = Rc::new(RefCell::new(ImageBuffer::new(
+    let mut buf = Arc::new(Mutex::new(ImageBuffer::new(
         image_width,
         image_height,
         Vec::with_capacity(cap),
     )));
-    let buf_rc = Rc::clone(&buf);
+    let buf_rc = Arc::clone(&buf);
     let image_c = image.clone();
     render_btn.connect_clicked(move |_| {
-        buf_rc.borrow_mut().clear();
-        render(
-            image_width,
-            image_height,
-            num_samples.get_value() as u32,
-            buf_rc.clone(),
-        );
-        // buf_rc.borrow_mut().debug();
+        buf_rc.lock().unwrap().clear();
+        let samples = num_samples.get_value() as u32;
+        let buf_rc2 = Arc::clone(&buf_rc);
+        std::thread::spawn(move || {
+            render(image_width, image_height, samples, buf_rc2);
+        })
+        .join();
         use gdk_pixbuf::PixbufLoaderExt;
         use glib::Bytes;
-        let bytes = Bytes::from(buf_rc.borrow().as_ref());
+        let bytes = Bytes::from(buf_rc.lock().unwrap().as_ref());
         let loader = PixbufLoader::new_with_type("pnm").unwrap();
         loader.write(format!("P6\n{} {}\n255\n", image_width, image_height).as_bytes());
         loader
@@ -129,13 +129,6 @@ impl<'a> Into<&'a [u8]> for &'a ImageBuffer {
         self.inner.as_slice()
     }
 }
-
-// use std::borrow::Borrow;
-// impl Borrow<[u8]> for ImageBuffer {
-//     fn borrow(&self) -> &[u8] {
-//         self.inner.as_slice()
-//     }
-// }
 
 impl ImageBuffer {
     pub fn new(width: u32, height: u32, buf: impl Into<Vec<u8>>) -> ImageBuffer {
@@ -182,7 +175,7 @@ impl ImageBuffer {
 }
 
 #[allow(non_upper_case_globals)]
-fn render(width: u32, height: u32, samples: u32, mut buf: Rc<RefCell<ImageBuffer>>) {
+fn render(width: u32, height: u32, samples: u32, mut buf: Arc<Mutex<ImageBuffer>>) {
     const max_depth: u32 = 10;
     let camera = Camera::new();
     let mut world = World::new();
@@ -219,7 +212,7 @@ fn render(width: u32, height: u32, samples: u32, mut buf: Rc<RefCell<ImageBuffer
         }),
     )));
 
-    let mut buf = buf.borrow_mut();
+    let mut buf = buf.lock().unwrap();
     let mut buf = buf.deref_mut();
     let mut rng = rand::thread_rng();
     for i in (0..height).rev() {
