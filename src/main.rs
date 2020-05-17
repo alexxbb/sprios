@@ -10,11 +10,14 @@ mod sphere;
 mod utils;
 mod vec;
 
-use gdk_pixbuf::{Colorspace, Pixbuf};
+use gdk_pixbuf::{Colorspace, Pixbuf, PixbufLoader};
 use getopts;
 use gio::prelude::*;
 use gtk::prelude::*;
-use gtk::{Application, ApplicationWindow, Button, Image, Orientation};
+use gtk::{
+    Application, ApplicationWindow, Box as GtkBox, BoxExt, Button, Image, ImageBuilder, Label,
+    Orientation, Paned, ProgressBar, SpinButton,
+};
 use rand::Rng;
 use std::rc::Rc;
 use std::time::Instant;
@@ -49,17 +52,33 @@ fn ray_color(ray: &Ray, world: &World, depth: u32) -> Color {
     Color::new(1.0, 1.0, 1.0) * (1.0 - t) + Color::new(0.5, 0.7, 1.0) * t
 }
 
-#[allow(non_upper_case_globals)]
 fn build_ui(app: &gtk::Application) {
     let window = ApplicationWindow::new(app);
-    window.set_title("Hello");
-    // window.set_default_size(800, 400);
+    window.set_title("SPRIOS");
+    window.set_default_size(800, 400);
 
     let render_btn = Button::new_with_label("Render");
-    const aspect_ratio: f32 = 16.0 / 9.0;
-    const samples_per_pixel: u32 = 2;
+    let split = Paned::new(Orientation::Horizontal);
+    let num_samples = SpinButton::new_with_range(1.0, 200.0, 5.0);
+    let samples_label = Label::new(Some("Samples"));
+    let image = Image::new();
+    let progress = ProgressBar::new();
+    progress.set_fraction(0.5);
+
+    let left_panel = GtkBox::new(Orientation::Vertical, 0);
+    let samples_box = GtkBox::new(Orientation::Horizontal, 0);
+    samples_box.pack_start(&samples_label, false, false, 3);
+    samples_box.pack_start(&num_samples, false, false, 3);
+
+    left_panel.pack_start(&samples_box, false, true, 3);
+    left_panel.pack_end(&render_btn, false, true, 3);
+    left_panel.pack_end(&progress, false, true, 3);
+    split.add1(&left_panel);
+    split.add2(&image);
+
+    const ASPECT_RATIO: f32 = 16.0 / 9.0;
     let image_width: u32 = 386;
-    let image_height: u32 = (image_width as f32 / aspect_ratio) as u32;
+    let image_height: u32 = (image_width as f32 / ASPECT_RATIO) as u32;
     let cap = (image_height * image_width * 3) as usize;
     let mut buf = Rc::new(RefCell::new(ImageBuffer::new(
         image_width,
@@ -67,32 +86,29 @@ fn build_ui(app: &gtk::Application) {
         Vec::with_capacity(cap),
     )));
     let buf_rc = Rc::clone(&buf);
-    let image = Image::new();
     let image_c = image.clone();
     render_btn.connect_clicked(move |_| {
         buf_rc.borrow_mut().clear();
-        render(image_width, image_height, samples_per_pixel, buf_rc.clone());
-        assert_eq!(buf_rc.borrow().as_ref().len(), cap);
-        buf_rc.borrow_mut().debug();
+        render(
+            image_width,
+            image_height,
+            num_samples.get_value() as u32,
+            buf_rc.clone(),
+        );
+        // buf_rc.borrow_mut().debug();
+        use gdk_pixbuf::PixbufLoaderExt;
         use glib::Bytes;
         let bytes = Bytes::from(buf_rc.borrow().as_ref());
-        let buf = Pixbuf::new_from_bytes(
-            &bytes,
-            Colorspace::Rgb,
-            false,
-            8 as i32,
-            image_width as i32,
-            image_height as i32,
-            3,
-        );
-        image_c.set_from_pixbuf(Some(&buf));
+        let loader = PixbufLoader::new_with_type("pnm").unwrap();
+        loader.write(format!("P6\n{} {}\n255\n", image_width, image_height).as_bytes());
+        loader
+            .write_bytes(&bytes)
+            .expect("Could not write to buffer");
+        loader.close();
+        image_c.set_from_pixbuf(loader.get_pixbuf().as_ref());
     });
 
-    use gtk::BoxExt;
-    let vb = gtk::Box::new(Orientation::Vertical, 0);
-    vb.pack_start(&render_btn, true, true, 3);
-    vb.pack_end(&image, true, true, 3);
-    window.add(&vb);
+    window.add(&split);
     window.show_all()
 }
 
@@ -107,6 +123,19 @@ impl AsRef<[u8]> for ImageBuffer {
         &self.inner
     }
 }
+
+impl<'a> Into<&'a [u8]> for &'a ImageBuffer {
+    fn into(self) -> &'a [u8] {
+        self.inner.as_slice()
+    }
+}
+
+// use std::borrow::Borrow;
+// impl Borrow<[u8]> for ImageBuffer {
+//     fn borrow(&self) -> &[u8] {
+//         self.inner.as_slice()
+//     }
+// }
 
 impl ImageBuffer {
     pub fn new(width: u32, height: u32, buf: impl Into<Vec<u8>>) -> ImageBuffer {
@@ -139,7 +168,8 @@ impl ImageBuffer {
 
         writeln!(buf, "P3\n{} {}\n255", self.width, self.height);
 
-        for i in 0..self.inner.len() - 2 {
+        for mut i in 0..self.inner.len() / 3 {
+            i *= 3;
             buf.write_fmt(format_args!(
                 "{} {} {}\n",
                 self.inner[i],
