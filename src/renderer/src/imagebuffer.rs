@@ -29,6 +29,9 @@ impl ImageBuffer {
             height,
         }
     }
+    pub fn len(&self) -> usize {
+        self.inner.len()
+    }
     pub fn write_color(&mut self, clr: &Color, samples_per_pixel: u32) {
         let scale = 1.0 / samples_per_pixel as f32;
 
@@ -47,10 +50,10 @@ impl ImageBuffer {
 
     pub fn debug(&self) {
         use std::fs::File;
-        let mut f = File::create("image.ppm").expect("Could not create ppm");
+        let f = File::create("image.ppm").expect("Could not create ppm");
         let mut buf = BufWriter::with_capacity(self.inner.len(), &f);
 
-        writeln!(buf, "P3\n{} {}\n255", self.width, self.height);
+        writeln!(buf, "P3\n{} {}\n255", self.width, self.height).unwrap();
 
         for mut i in 0..self.inner.len() / 3 {
             i *= 3;
@@ -59,8 +62,9 @@ impl ImageBuffer {
                 self.inner[i],
                 self.inner[i + 1],
                 self.inner[i + 2]
-            ));
+            ))
+            .unwrap();
         }
-        buf.flush();
+        buf.flush().unwrap();
     }
 }
