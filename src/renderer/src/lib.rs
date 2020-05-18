@@ -38,7 +38,10 @@ fn ray_color(ray: &Ray, world: &World, depth: u32) -> Color {
     Color::new(1.0, 1.0, 1.0) * (1.0 - t) + Color::new(0.5, 0.7, 1.0) * t
 }
 
-pub fn render(width: u32, height: u32, samples: u32, buf: Arc<Mutex<ImageBuffer>>) {
+pub fn render<F>(width: u32, height: u32, samples: u32, buf: Arc<Mutex<ImageBuffer>>, progress: F)
+where
+    F: Fn(u32)
+{
     const MAX_DEPTH: u32 = 10;
     let camera = Camera::new();
     let mut world = World::new();
@@ -81,6 +84,7 @@ pub fn render(width: u32, height: u32, samples: u32, buf: Arc<Mutex<ImageBuffer>
     for i in (0..height).rev() {
         let cur_line = height - i;
         let _progress = (cur_line as f32 / height as f32) * 100.0;
+        progress(_progress as u32);
         for j in 0..width {
             let mut pixel_color = Color::ZERO;
             for _ in 0..samples {

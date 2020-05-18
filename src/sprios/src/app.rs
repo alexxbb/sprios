@@ -5,9 +5,8 @@ use gtk::{ApplicationWindow, Box as GtkBox, BoxExt,
 use gio::ApplicationExt;
 use renderer::{render, ImageBuffer};
 use std::sync::{Arc, Mutex};
-use std::cell::RefCell;
 use std::rc::Rc;
-use gdk_pixbuf::{Colorspace, Pixbuf, PixbufLoader};
+use gdk_pixbuf::{PixbufLoader};
 
 pub struct App {
     pub window: ApplicationWindow,
@@ -28,7 +27,7 @@ impl App {
         let samples_label = Label::new(Some("Samples"));
         let image = Image::new();
         let progress = ProgressBar::new();
-        progress.set_fraction(0.5);
+        progress.set_fraction(0.0);
 
         let left_panel = GtkBox::new(Orientation::Vertical, 0);
         let samples_box = GtkBox::new(Orientation::Horizontal, 0);
@@ -45,31 +44,41 @@ impl App {
         let image_width: u32 = 386;
         let image_height: u32 = (image_width as f32 / ASPECT_RATIO) as u32;
         let cap = (image_height * image_width * 3) as usize;
-        let mut buf = Arc::new(Mutex::new(ImageBuffer::new(
+        let buf = Arc::new(Mutex::new(ImageBuffer::new(
             image_width,
             image_height,
             Vec::with_capacity(cap),
         )));
         let buf_rc = Arc::clone(&buf);
         let image_c = image.clone();
+        let (s, r) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+        let progress_clone = progress.clone();
         render_btn.connect_clicked(move |_| {
             buf_rc.lock().unwrap().clear();
+            progress_clone.set_fraction(0.0);
             let samples = num_samples.get_value() as u32;
             let buf_rc2 = Arc::clone(&buf_rc);
+            let s = s.clone();
             std::thread::spawn(move || {
-                render(image_width, image_height, samples, buf_rc2);
-            })
-                .join();
-            use gdk_pixbuf::PixbufLoaderExt;
-            use glib::Bytes;
-            let bytes = Bytes::from(buf_rc.lock().unwrap().as_ref());
-            let loader = PixbufLoader::new_with_type("pnm").unwrap();
-            loader.write(format!("P6\n{} {}\n255\n", image_width, image_height).as_bytes());
-            loader
-                .write_bytes(&bytes)
-                .expect("Could not write to buffer");
-            loader.close();
-            image_c.set_from_pixbuf(loader.get_pixbuf().as_ref());
+                render(image_width, image_height, samples, buf_rc2, move |val| {
+                    s.send(val);
+                });
+            });
+            // use gdk_pixbuf::PixbufLoaderExt;
+            // use glib::Bytes;
+            // let bytes = Bytes::from(buf_rc.lock().unwrap().as_ref());
+            // let loader = PixbufLoader::new_with_type("pnm").unwrap();
+            // loader.write(format!("P6\n{} {}\n255\n", image_width, image_height).as_bytes());
+            // loader
+            //     .write_bytes(&bytes)
+            //     .expect("Could not write to buffer");
+            // loader.close();
+            // image_c.set_from_pixbuf(loader.get_pixbuf().as_ref());
+        });
+        r.attach(None, move |msg| {
+            let frac = msg as f64 / 100 as f64;
+            progress.set_fraction(frac);
+            glib::Continue(true)
         });
 
         self.window.add(&split);
