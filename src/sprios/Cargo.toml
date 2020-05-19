@@ -1,0 +1,27 @@
+[package]
+name = "sprios"
+version = "0.1.0"
+authors = ["alexbb <hou.alexx@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+getopts = "0.2.21"
+renderer = {path = "../renderer"}
+
+[dependencies.gtk]
+version = "0.8.1"
+features = ["v3_16"]
+
+[dependencies.gdk-pixbuf]
+version = "0.8.0"
+features = ["dox"]
+
+[dependencies.gdk]
+version = "0.12.1"
+
+[dependencies.glib]
+version = "0.9.3"
+
+[dependencies.gio]
+version = ""
+features = ["v2_44"]
