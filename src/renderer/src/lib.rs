@@ -18,6 +18,7 @@ use std::ops::DerefMut;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 pub use vec::{Color, Vec3};
+use std::time::{Duration, Instant};
 
 type World = Vec<Rc<dyn Hittable>>;
 
@@ -40,7 +41,7 @@ fn ray_color(ray: &Ray, world: &World, depth: u32) -> Color {
 
 pub fn render<F>(width: u32, height: u32, samples: u32, buf: Arc<Mutex<ImageBuffer>>, progress: F)
 where
-    F: Fn(u32)
+    F: Fn(u32, u32)
 {
     const MAX_DEPTH: u32 = 10;
     let camera = Camera::new();
@@ -78,13 +79,15 @@ where
         }),
     )));
 
+    let mut pix_time = 0u128;
     let mut buf = buf.lock().unwrap();
     let buf = buf.deref_mut();
     let mut rng = rand::thread_rng();
     for i in (0..height).rev() {
+        let pix_t0 = Instant::now();
         let cur_line = height - i;
         let _progress = (cur_line as f32 / height as f32) * 100.0;
-        progress(_progress as u32);
+        progress(_progress as u32, pix_time as u32);
         for j in 0..width {
             let mut pixel_color = Color::ZERO;
             for _ in 0..samples {
@@ -95,6 +98,7 @@ where
             }
             buf.write_color(&pixel_color, samples);
         }
+        pix_time = pix_t0.elapsed().as_millis();
     }
 }
 
@@ -107,7 +111,7 @@ mod tests {
         let buf = Vec::<u8>::new();
         let mut buf = ImageBuffer::new(300, 200, buf);
         let buf = Arc::new(Mutex::new(buf));
-        render(300, 200, 1, buf.clone());
+        render(300, 200, 1, buf.clone(), |_, _|{});
         assert_eq!(buf.lock().unwrap().len(), 300 * 200 * 3);
     }
 }
