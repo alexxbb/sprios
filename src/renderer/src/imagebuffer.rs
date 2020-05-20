@@ -32,16 +32,17 @@ impl ImageBuffer {
     pub fn len(&self) -> usize {
         self.inner.len()
     }
-    pub fn write_color(&mut self, clr: &Color, samples_per_pixel: u32) {
+    pub fn write_color(&mut self, idx: u32, clr: &Color, samples_per_pixel: u32) {
         let scale = 1.0 / samples_per_pixel as f32;
 
         let r = (clr.x * scale).sqrt();
         let g = (clr.y * scale).sqrt();
         let b = (clr.z * scale).sqrt();
+        // let idx = idx * 3;
 
-        self.inner.push((256.0 * r.clip(0.0, 0.999)) as u8);
-        self.inner.push((256.0 * g.clip(0.0, 0.999)) as u8);
-        self.inner.push((256.0 * b.clip(0.0, 0.999)) as u8);
+        self.inner[idx as usize + 0] = (256.0 * r.clip(0.0, 0.999)) as u8;
+        self.inner[idx as usize + 1] = (256.0 * g.clip(0.0, 0.999)) as u8;
+        self.inner[idx as usize + 2] = (256.0 * b.clip(0.0, 0.999)) as u8;
     }
 
     pub fn clear(&mut self) {

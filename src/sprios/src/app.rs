@@ -56,26 +56,31 @@ impl App {
 
         const ASPECT_RATIO: f32 = 16.0 / 9.0;
         let image_width: u32 = 480;
+        let image_width: u32 = 9;
         let image_height: u32 = (image_width as f32 / ASPECT_RATIO) as u32;
+        // let image_width: u32 = 9;
+        // let image_height: u32 = 9;
         let cap = (image_height * image_width * 3) as usize;
+        let mut buf_backend:Vec<u8> = Vec::new();
+        buf_backend.resize(cap, 0);
+        assert_eq!(buf_backend.len(), cap);
         let buf = Arc::new(Mutex::new(ImageBuffer::new(
             image_width,
             image_height,
-            Vec::with_capacity(cap),
+            buf_backend,
         )));
         let buf_rc = Arc::clone(&buf);
         let image_c = image.clone();
         let (s, r) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
         let progress_clone = progress.clone();
         render_btn.connect_clicked(move |_| {
-            buf_rc.lock().unwrap().clear();
             progress_clone.set_fraction(0.0);
             let samples = num_samples.get_value() as u32;
             let buf_rc2 = Arc::clone(&buf_rc);
             let s = s.clone();
             let s2 = s.clone();
             std::thread::spawn(move || {
-                render(image_width, image_height, samples, buf_rc2, move |prog, pix| {
+                render(image_width, image_height, samples, 3, buf_rc2, move |prog, pix| {
                     s2.send(Event::Progress((prog, pix)));
                 });
                 s.send(Event::Done);
@@ -99,6 +104,7 @@ impl App {
                         .expect("Could not write to buffer");
                     loader.close();
                     image_c.set_from_pixbuf(loader.get_pixbuf().as_ref());
+                    buf.lock().unwrap().debug();
                 }
             }
             glib::Continue(true)

@@ -2,18 +2,18 @@ use crate::hittable::{Hittable, HitRecord};
 use crate::ray::Ray;
 use crate::vec::*;
 use crate::material::{Material };
-use std::rc::Rc;
+use std::sync::Arc;
 
 
 #[derive(Clone)]
 pub struct Sphere {
     pub center: Point3,
     pub radius: f32,
-    pub material: Rc<dyn Material>,
+    pub material: Arc<dyn Material>,
 }
 
 impl Sphere {
-    pub fn new<P: Into<Point3>>(center: P, radius: f32, mat: Rc<dyn Material>) -> Sphere {
+    pub fn new<P: Into<Point3>>(center: P, radius: f32, mat: Arc<dyn Material>) -> Sphere {
         Sphere {
             center: center.into(),
             radius,
@@ -33,7 +33,7 @@ impl Hittable for Sphere {
             let root = discriminant.sqrt();
             let temp = (-half_b - root) / a;
             if temp < t_max && temp > t_min {
-                let mut rec = HitRecord::new(Rc::clone(&self.material));
+                let mut rec = HitRecord::new(Arc::clone(&self.material));
                 rec.t = temp;
                 rec.p = ray.at(temp);
                 let outward_normal = (rec.p - self.center) / self.radius;
@@ -42,7 +42,7 @@ impl Hittable for Sphere {
             }
             let temp = (-half_b + root) / a;
             if temp < t_max && temp > t_min {
-                let mut rec = HitRecord::new(Rc::clone(&self.material));
+                let mut rec = HitRecord::new(Arc::clone(&self.material));
                 rec.t = temp;
                 rec.p = ray.at(temp);
                 let outward_normal = (rec.p - self.center) / self.radius;

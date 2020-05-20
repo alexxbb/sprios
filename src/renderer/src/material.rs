@@ -2,7 +2,7 @@ use crate::hittable::HitRecord;
 use crate::ray::Ray;
 use crate::vec::{Vec3, Color};
 
-pub trait Material {
+pub trait Material: Sync + Send {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<Ray>;
     fn color(&self) -> &Color;
 }
