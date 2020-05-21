@@ -31,6 +31,13 @@ use std::thread;
 
 type Buffer = Arc<Mutex<ImageBuffer>>;
 
+#[derive(Copy, Clone)]
+pub struct RenderStats {
+    pub render_time: f64,
+    pub mrays: f64,
+    pub fps: f64,
+}
+
 fn ray_color(ray: &Ray, world: &World, depth: u32) -> Color {
     if depth == 0 {
         // Max recursion depth reached
@@ -85,9 +92,9 @@ fn world() -> World {
     world
 }
 
-pub fn render<F>(width: u32, height: u32, samples: u32, bucket: u32, buf: Buffer, progress: F)
+pub fn render<F>(width: u32, height: u32, samples: u32, bucket: u32, buf: Buffer, progress: F) -> RenderStats
     where
-        F: Fn(u32, u32) + Send + Sync + 'static
+        F: Fn(u32) + Send + Sync + 'static
 {
     const MAX_DEPTH: u32 = 10;
     let world = Arc::new(world());
@@ -100,6 +107,7 @@ pub fn render<F>(width: u32, height: u32, samples: u32, bucket: u32, buf: Buffer
     let broker = Arc::new(Mutex::new(broker));
     let mut pix_time = 0u128;
     let progress = Arc::new(progress);
+    let timer = Instant::now();
     for _ in 0..4 {
         let broker = Arc::clone(&broker);
         let buffer = Arc::clone(&buf);
@@ -117,8 +125,7 @@ pub fn render<F>(width: u32, height: u32, samples: u32, bucket: u32, buf: Buffer
                 match bucket {
                     Some(bucket) => {
                         // eprintln!("{:?} with bucket {}", current(), &bucket);
-                        let prog = ((1.0 - buckets_left as f32 / total_buckets as f32) * 100.0) as u32;
-                        progress(prog, 0);
+                        progress(((1.0 - buckets_left as f32 / total_buckets as f32) * 100.0) as u32);
                         // This is not right! The buffer is locked until this bucket finished.
                         let mut buffer = buffer.lock().unwrap();
                         let mut buffer = buffer.deref_mut();
@@ -142,6 +149,10 @@ pub fn render<F>(width: u32, height: u32, samples: u32, bucket: u32, buf: Buffer
     for h in threads {
         h.join();
     }
+    let render_time = timer.elapsed().as_secs_f64();
+    let fps = 1.0 / render_time;
+    let mrays = ((width as u128 * height as u128 * samples as u128) as f64 * fps) / 1.0e6;
+    RenderStats{render_time, mrays, fps }
 }
 
 #[cfg(test)]

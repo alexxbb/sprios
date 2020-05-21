@@ -3,15 +3,15 @@ use gtk::{ApplicationWindow, Box as GtkBox, BoxExt,
           Paned, ProgressBar, SpinButton, ProgressBarExt,
           PanedExt, ContainerExt, ButtonExt, ImageExt, SpinButtonExt, WidgetExt};
 use gio::ApplicationExt;
-use renderer::{render, ImageBuffer};
+use renderer::{render, ImageBuffer, RenderStats};
 use std::sync::{Arc, Mutex};
 use std::rc::Rc;
 use gdk_pixbuf::{PixbufLoader};
 
 #[derive(Copy, Clone)]
 pub enum Event {
-    Progress((u32, u32)),
-    Done,
+    Progress(u32),
+    RenderCompleted(RenderStats),
 }
 
 pub struct App {
@@ -29,8 +29,19 @@ impl App {
     pub fn build_ui(&self) {
         let render_btn = Button::new_with_label("Render");
         let split = Paned::new(Orientation::Horizontal);
+        // Samples
         let num_samples = SpinButton::new_with_range(1.0, 500.0, 5.0);
         let samples_label = Label::new(Some("Samples"));
+
+        // Bucket size
+        let bucket_size = SpinButton::new_with_range(4.0, 100.0, 4.0);
+        let bucket_label = Label::new(Some("Bucket"));
+        bucket_size.set_value(32.0);
+
+        let res_width = SpinButton::new_with_range(10.0, 2048.0, 100.0);
+        let res_width_label = Label::new(Some("Width"));
+        res_width.set_value(960.0);
+
         let stat_label = Label::new(None);
         let image = Image::new();
         let progress = ProgressBar::new();
@@ -47,19 +58,28 @@ impl App {
         let samples_box = GtkBox::new(Orientation::Horizontal, 0);
         samples_box.pack_start(&samples_label, false, false, 3);
         samples_box.pack_start(&num_samples, false, false, 3);
+        let bucket_box = GtkBox::new(Orientation::Horizontal, 0);
+        bucket_box.pack_start(&bucket_label, false, false, 3);
+        bucket_box.pack_start(&bucket_size, false, false, 3);
+
+        let res_box = GtkBox::new(Orientation::Horizontal, 0);
+        res_box.pack_start(&res_width_label, false, false, 3);
+        res_box.pack_start(&res_width, false, false, 3);
 
         left_panel.pack_start(&samples_box, false, true, 3);
+        left_panel.pack_start(&bucket_box, false, true, 3);
+        left_panel.pack_start(&res_box, false, true, 3);
         left_panel.pack_end(&render_btn, false, true, 3);
         left_panel.pack_end(&progress, false, true, 3);
         split.add1(&left_panel);
         split.add2(&right_panel);
 
         const ASPECT_RATIO: f32 = 16.0 / 9.0;
-        let image_width: u32 = 480;
+        let image_width: u32 = 960;
         let image_height: u32 = (image_width as f32 / ASPECT_RATIO) as u32;
         eprintln!("Rendering {}x{}", image_width, image_height);
         let cap = (image_height * image_width * 3) as usize;
-        let mut buf_backend:Vec<u8> = Vec::new();
+        let mut buf_backend: Vec<u8> = Vec::new();
         buf_backend.resize(cap, 0);
         let buf = Arc::new(Mutex::new(ImageBuffer::new(
             image_width,
@@ -73,24 +93,24 @@ impl App {
         render_btn.connect_clicked(move |_| {
             progress_clone.set_fraction(0.0);
             let samples = num_samples.get_value() as u32;
+            let bucket_size = bucket_size.get_value() as u32;
+            let width = res_width.get_value() as u32;
             let buf_rc2 = Arc::clone(&buf_rc);
             let s = s.clone();
             let s2 = s.clone();
             std::thread::spawn(move || {
-                render(image_width, image_height, samples, 50, buf_rc2, move |prog, pix| {
-                    s2.send(Event::Progress((prog, pix)));
-                });
-                s.send(Event::Done);
+                let stats = render(image_width, image_height, samples, bucket_size, buf_rc2,
+                                   move |prog| { s2.send(Event::Progress(prog)); });
+                s.send(Event::RenderCompleted(stats));
             });
         });
         r.attach(None, move |event| {
             match event {
                 Event::Progress(val) => {
-                    let frac = val.0 as f64 / 100 as f64;
+                    let frac = val as f64 / 100 as f64;
                     progress.set_fraction(frac);
-                    stat_label.set_text(&format!("Pixel Time: {} ms", val.1));
                 }
-                Event::Done => {
+                Event::RenderCompleted(stat) => {
                     use gdk_pixbuf::PixbufLoaderExt;
                     use glib::Bytes;
                     let bytes = Bytes::from(buf.lock().unwrap().as_ref());
@@ -102,6 +122,7 @@ impl App {
                     loader.close();
                     image_c.set_from_pixbuf(loader.get_pixbuf().as_ref());
                     buf.lock().unwrap().debug();
+                    stat_label.set_text(&format!("Time: {:.4} sec | FPS: {:.4} | MRays: {:.4}", stat.render_time, stat.fps, stat.mrays));
                 }
             }
             glib::Continue(true)
