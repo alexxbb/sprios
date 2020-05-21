@@ -55,7 +55,7 @@ impl App {
         split.add2(&right_panel);
 
         const ASPECT_RATIO: f32 = 16.0 / 9.0;
-        let image_width: u32 = 384;
+        let image_width: u32 = 480;
         let image_height: u32 = (image_width as f32 / ASPECT_RATIO) as u32;
         eprintln!("Rendering {}x{}", image_width, image_height);
         let cap = (image_height * image_width * 3) as usize;
@@ -77,7 +77,7 @@ impl App {
             let s = s.clone();
             let s2 = s.clone();
             std::thread::spawn(move || {
-                render(image_width, image_height, samples, 100, buf_rc2, move |prog, pix| {
+                render(image_width, image_height, samples, 50, buf_rc2, move |prog, pix| {
                     s2.send(Event::Progress((prog, pix)));
                 });
                 s.send(Event::Done);
