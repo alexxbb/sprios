@@ -29,7 +29,7 @@ impl App {
     pub fn build_ui(&self) {
         let render_btn = Button::new_with_label("Render");
         let split = Paned::new(Orientation::Horizontal);
-        let num_samples = SpinButton::new_with_range(1.0, 200.0, 5.0);
+        let num_samples = SpinButton::new_with_range(1.0, 500.0, 5.0);
         let samples_label = Label::new(Some("Samples"));
         let stat_label = Label::new(None);
         let image = Image::new();
@@ -55,15 +55,12 @@ impl App {
         split.add2(&right_panel);
 
         const ASPECT_RATIO: f32 = 16.0 / 9.0;
-        let image_width: u32 = 480;
-        let image_width: u32 = 9;
+        let image_width: u32 = 550;
         let image_height: u32 = (image_width as f32 / ASPECT_RATIO) as u32;
-        // let image_width: u32 = 9;
-        // let image_height: u32 = 9;
+        eprintln!("Rendering {}x{}", image_width, image_height);
         let cap = (image_height * image_width * 3) as usize;
         let mut buf_backend:Vec<u8> = Vec::new();
         buf_backend.resize(cap, 0);
-        assert_eq!(buf_backend.len(), cap);
         let buf = Arc::new(Mutex::new(ImageBuffer::new(
             image_width,
             image_height,
@@ -80,7 +77,7 @@ impl App {
             let s = s.clone();
             let s2 = s.clone();
             std::thread::spawn(move || {
-                render(image_width, image_height, samples, 3, buf_rc2, move |prog, pix| {
+                render(image_width, image_height, samples, 40, buf_rc2, move |prog, pix| {
                     s2.send(Event::Progress((prog, pix)));
                 });
                 s.send(Event::Done);

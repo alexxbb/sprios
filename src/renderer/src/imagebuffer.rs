@@ -38,7 +38,7 @@ impl ImageBuffer {
         let r = (clr.x * scale).sqrt();
         let g = (clr.y * scale).sqrt();
         let b = (clr.z * scale).sqrt();
-        // let idx = idx * 3;
+        let idx = idx * 3;
 
         self.inner[idx as usize + 0] = (256.0 * r.clip(0.0, 0.999)) as u8;
         self.inner[idx as usize + 1] = (256.0 * g.clip(0.0, 0.999)) as u8;
