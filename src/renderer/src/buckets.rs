@@ -6,6 +6,12 @@ pub struct Bucket {
     pub bottom_right: (u32, u32),
 }
 
+impl Bucket {
+    pub fn pixels(self) -> BucketPixels {
+        self.into_iter()
+    }
+}
+
 pub struct BucketPixels {
     bucket: Bucket,
     cursor: (u32, u32)

@@ -26,6 +26,8 @@ use std::collections::VecDeque;
 use threadpool::ThreadPool;
 use world::World;
 use std::sync::atomic::Ordering;
+use std::thread::Thread;
+use std::thread;
 
 type Buffer = Arc<Mutex<ImageBuffer>>;
 
@@ -92,8 +94,9 @@ pub fn render<F>(width: u32, height: u32, samples: u32, bucket: u32, buf: Buffer
     const MAX_DEPTH: u32 = 10;
     let world = Arc::new(world());
     let camera = Arc::new(Camera::new());
-    let pool = ThreadPool::new(4);
+    let mut threads = Vec::new();
     let buckets = BucketGrid::new(width, height, bucket);
+    let test = Arc::new(std::sync::atomic::AtomicI32::new(0));
     let mut broker: VecDeque<Bucket> = std::collections::VecDeque::new();
     broker.extend(buckets);
     let broker = Arc::new(Mutex::new(broker));
@@ -103,20 +106,19 @@ pub fn render<F>(width: u32, height: u32, samples: u32, bucket: u32, buf: Buffer
         let buffer = Arc::clone(&buf);
         let world = Arc::clone(&world);
         let camera = Arc::clone(&camera);
-        pool.execute(move || {
+        threads.push(thread::spawn(move || {
             let mut rng = rand::thread_rng();
-            use std::thread::current;
+            use std::thread::{current, sleep};
             loop {
-                // Progress report?
-                eprintln!("{:?} before lock", current());
                 let bucket = broker.lock().unwrap().pop_front();
-                eprintln!("{:?} after lock", current());
-                match bucket{
+                // Progress report?
+                match bucket {
                     Some(bucket) => {
-                        // eprintln!("{:?} with bucket {}", current(), &bucket);
+                        eprintln!("{:?} with bucket {}", current(), &bucket);
+                        // This is not right! The buffer is locked until this bucket finished.
                         let mut buffer = buffer.lock().unwrap();
                         let mut buffer = buffer.deref_mut();
-                        for (y, x) in bucket.into_iter() {
+                        for (y, x) in bucket.pixels() {
                             let mut pixel_color = Color::ZERO;
                             for _ in 0..samples {
                                 let u = (x as f32 + rng.gen::<f32>()) / (width - 1) as f32;
@@ -131,8 +133,10 @@ pub fn render<F>(width: u32, height: u32, samples: u32, bucket: u32, buf: Buffer
                     None => break
                 }
             }
-        });
-        pool.join();
+        }));
+    }
+    for h in threads {
+        h.join();
     }
 }
 
