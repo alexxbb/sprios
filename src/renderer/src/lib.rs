@@ -12,7 +12,7 @@ mod vec;
 pub use camera::Camera;
 pub use imagebuffer::ImageBuffer;
 pub use material::{Lambertian, Metal};
-use rand::Rng;
+use rand::{Rng, SeedableRng};
 pub use ray::Ray;
 use sphere::Sphere;
 use buckets::Bucket;
@@ -70,23 +70,23 @@ fn world() -> World {
     world.add(Sphere::new(
         (-1.0, 0.0, -1.0),
         0.5,
-        Arc::new(Metal {
+        Arc::new(Lambertian {
             color: (0.9, 0.1, 0.1).into(),
         }),
     ));
     // Green
     world.add(Sphere::new(
-        (1.0, 0.0, -1.0),
+        (0.0, 0.0, -1.0),
         0.5,
-        Arc::new(Metal {
+        Arc::new(Lambertian {
             color: (0.1, 0.9, 0.1).into(),
         }),
     ));
     // Blue
     world.add(Sphere::new(
-        (0.0, 0.0, -1.0),
+        (1.0, 0.0, -1.0),
         0.5,
-        Arc::new(Metal {
+        Arc::new(Lambertian {
             color: (0.1, 0.1, 0.9).into(),
         }),
     ));
@@ -116,7 +116,7 @@ pub fn render<F>(width: u32, height: u32, samples: u32, bucket: u32, image_ptr: 
         let camera = Arc::clone(&camera);
         let progress = Arc::clone(&progress);
         threads.push(thread::spawn(move || {
-            let mut rng = rand::thread_rng();
+            let mut rng = rand::rngs::SmallRng::from_entropy();
             use std::thread::{current, sleep};
             loop {
                 let mut broker = broker.lock().unwrap();
