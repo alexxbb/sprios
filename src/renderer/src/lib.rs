@@ -25,11 +25,12 @@ use crate::buckets::BucketGrid;
 use std::collections::VecDeque;
 use threadpool::ThreadPool;
 use world::World;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{Ordering, AtomicPtr};
 use std::thread::Thread;
 use std::thread;
+use crate::utils::Clip;
 
-type Buffer = Arc<Mutex<ImageBuffer>>;
+// type Buffer = Arc<Mutex<ImageBuffer>>;
 
 #[derive(Copy, Clone)]
 pub struct RenderStats {
@@ -92,7 +93,7 @@ fn world() -> World {
     world
 }
 
-pub fn render<F>(width: u32, height: u32, samples: u32, bucket: u32, buf: Buffer, progress: F) -> RenderStats
+pub fn render<F>(width: u32, height: u32, samples: u32, bucket: u32, image_ptr: Arc<AtomicPtr<u8>>, progress: F) -> RenderStats
     where
         F: Fn(u32) + Send + Sync + 'static
 {
@@ -110,7 +111,7 @@ pub fn render<F>(width: u32, height: u32, samples: u32, bucket: u32, buf: Buffer
     let timer = Instant::now();
     for _ in 0..4 {
         let broker = Arc::clone(&broker);
-        let buffer = Arc::clone(&buf);
+        let image_ptr = Arc::clone(&image_ptr);
         let world = Arc::clone(&world);
         let camera = Arc::clone(&camera);
         let progress = Arc::clone(&progress);
@@ -127,8 +128,7 @@ pub fn render<F>(width: u32, height: u32, samples: u32, bucket: u32, buf: Buffer
                         // eprintln!("{:?} with bucket {}", current(), &bucket);
                         progress(((1.0 - buckets_left as f32 / total_buckets as f32) * 100.0) as u32);
                         // This is not right! The buffer is locked until this bucket finished.
-                        let mut buffer = buffer.lock().unwrap();
-                        let mut buffer = buffer.deref_mut();
+                        let ptr = image_ptr.load(Ordering::Relaxed);
                         for (y, x) in bucket.pixels() {
                             let mut pixel_color = Color::ZERO;
                             for _ in 0..samples {
@@ -137,8 +137,17 @@ pub fn render<F>(width: u32, height: u32, samples: u32, bucket: u32, buf: Buffer
                                 let ray = camera.get_ray(u, v);
                                 pixel_color += &ray_color(&ray, &world, MAX_DEPTH);
                             }
-                            let idx = y * width + x;
-                            buffer.write_color(idx, &pixel_color, samples);
+                            let idx = ((y * width + x) * 3) as usize;
+                            let scale = 1.0 / samples as f32;
+                            let r = (pixel_color.x * scale).sqrt();
+                            let g = (pixel_color.y * scale).sqrt();
+                            let b = (pixel_color.z * scale).sqrt();
+
+                            unsafe {
+                                ptr.add(idx + 0).write((256.0 * r.clip(0.0, 0.999)) as u8);
+                                ptr.add(idx + 1).write((256.0 * g.clip(0.0, 0.999)) as u8);
+                                ptr.add(idx + 2).write((256.0 * b.clip(0.0, 0.999)) as u8);
+                            }
                         }
                     }
                     None => break
@@ -162,9 +171,9 @@ mod tests {
     #[test]
     fn test_render() {
         let buf = Vec::<u8>::new();
-        let mut buf = ImageBuffer::new(300, 200, buf);
-        let buf = Arc::new(Mutex::new(buf));
+        let mut buf = Arc::new(Vec::new());
+        buf.resize(300 * 200 * 3, 0);
         render(300, 200, 1, 10, buf.clone(), |_, _| {});
-        assert_eq!(buf.lock().unwrap().len(), 300 * 200 * 3);
+        assert_eq!(buf.len(), 300 * 200 * 3);
     }
 }

@@ -7,6 +7,8 @@ use renderer::{render, ImageBuffer, RenderStats};
 use std::sync::{Arc, Mutex};
 use std::rc::Rc;
 use gdk_pixbuf::{PixbufLoader};
+use std::sync::atomic::AtomicPtr;
+use std::cell::RefCell;
 
 #[derive(Copy, Clone)]
 pub enum Event {
@@ -22,7 +24,7 @@ impl App {
     pub fn new(gtk_app: &gtk::Application) -> Rc<App> {
         let window = ApplicationWindow::new(gtk_app);
         window.set_title("SPRIOS");
-        window.set_default_size(800, 400);
+        window.set_default_size(920, 470);
         Rc::new(App { window })
     }
 
@@ -31,6 +33,7 @@ impl App {
         let split = Paned::new(Orientation::Horizontal);
         // Samples
         let num_samples = SpinButton::new_with_range(1.0, 500.0, 5.0);
+        num_samples.set_value(3.0);
         let samples_label = Label::new(Some("Samples"));
 
         // Bucket size
@@ -40,7 +43,7 @@ impl App {
 
         let res_width = SpinButton::new_with_range(10.0, 2048.0, 100.0);
         let res_width_label = Label::new(Some("Width"));
-        res_width.set_value(960.0);
+        res_width.set_value(720.0);
 
         let stat_label = Label::new(None);
         let image = Image::new();
@@ -75,35 +78,34 @@ impl App {
         split.add2(&right_panel);
 
         const ASPECT_RATIO: f32 = 16.0 / 9.0;
-        let image_width: u32 = 960;
-        let image_height: u32 = (image_width as f32 / ASPECT_RATIO) as u32;
-        eprintln!("Rendering {}x{}", image_width, image_height);
-        let cap = (image_height * image_width * 3) as usize;
-        let mut buf_backend: Vec<u8> = Vec::new();
-        buf_backend.resize(cap, 0);
-        let buf = Arc::new(Mutex::new(ImageBuffer::new(
-            image_width,
-            image_height,
-            buf_backend,
-        )));
-        let buf_rc = Arc::clone(&buf);
+        let mut image_buffer:Vec<u8> = Vec::new();
         let image_c = image.clone();
         let (s, r) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
         let progress_clone = progress.clone();
+        let image_buf = Rc::new(RefCell::new(image_buffer));
+        let _res_width = res_width.clone();
+        let _image_buf = Rc::clone(&image_buf);
         render_btn.connect_clicked(move |_| {
+            let image_width = _res_width.get_value() as u32;
+            // let image_width = res_width.get_value() as u32;
+            let image_height = (image_width as f32 / ASPECT_RATIO) as u32;
+            let cap = (image_height * image_width * 3) as usize;
+            _image_buf.borrow_mut().resize(cap, 0);
             progress_clone.set_fraction(0.0);
             let samples = num_samples.get_value() as u32;
             let bucket_size = bucket_size.get_value() as u32;
-            let width = res_width.get_value() as u32;
-            let buf_rc2 = Arc::clone(&buf_rc);
+            let buffer_ptr = Arc::new(AtomicPtr::new(_image_buf.borrow_mut().as_mut_ptr()));
+            // let buffer_ptr = Arc::clone(&buffer_ptr);
             let s = s.clone();
             let s2 = s.clone();
+            eprintln!("Rendering {}x{}", image_width, image_height);
             std::thread::spawn(move || {
-                let stats = render(image_width, image_height, samples, bucket_size, buf_rc2,
+                let stats = render(image_width, image_height, samples, bucket_size, buffer_ptr,
                                    move |prog| { s2.send(Event::Progress(prog)); });
                 s.send(Event::RenderCompleted(stats));
             });
         });
+        let _res_width = res_width.clone();
         r.attach(None, move |event| {
             match event {
                 Event::Progress(val) => {
@@ -113,16 +115,17 @@ impl App {
                 Event::RenderCompleted(stat) => {
                     use gdk_pixbuf::PixbufLoaderExt;
                     use glib::Bytes;
-                    let bytes = Bytes::from(buf.lock().unwrap().as_ref());
+                    let bytes = Bytes::from(&image_buf.borrow().as_ref());
                     let loader = PixbufLoader::new_with_type("pnm").unwrap();
+                    let image_width = _res_width.get_value() as u32;
+                    let image_height = (image_width as f32 / ASPECT_RATIO) as u32;
                     loader.write(format!("P6\n{} {}\n255\n", image_width, image_height).as_bytes());
                     loader
                         .write_bytes(&bytes)
                         .expect("Could not write to buffer");
                     loader.close();
                     image_c.set_from_pixbuf(loader.get_pixbuf().as_ref());
-                    buf.lock().unwrap().debug();
-                    stat_label.set_text(&format!("Time: {:.4} sec | FPS: {:.4} | MRays: {:.4}", stat.render_time, stat.fps, stat.mrays));
+                    stat_label.set_text(&format!("Time: {:.4} sec | FPS: {:.4} | MRays/s: {:.2}", stat.render_time, stat.fps, stat.mrays));
                 }
             }
             glib::Continue(true)

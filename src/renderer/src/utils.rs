@@ -10,7 +10,7 @@ impl Clip for f32
 
     fn clip(self, min: Self::Output, max: Self::Output) -> Self::Output
     {
-        assert!(min <= max);
+        debug_assert!(min <= max);
         let mut x = self;
         if x < min {
             x = min;
