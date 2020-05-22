@@ -3,6 +3,7 @@ use gtk::{ApplicationWindow, Box as GtkBox, BoxExt,
           Paned, ProgressBar, SpinButton, ProgressBarExt,
           PanedExt, ContainerExt, ButtonExt, ImageExt, SpinButtonExt, WidgetExt};
 use gio::ApplicationExt;
+use num_cpus;
 use renderer::{render, ImageBuffer, RenderStats};
 use std::sync::{Arc, Mutex};
 use std::rc::Rc;
@@ -41,9 +42,17 @@ impl App {
         let bucket_label = Label::new(Some("Bucket"));
         bucket_size.set_value(32.0);
 
+        // Number of threads
+        let max_threads = num_cpus::get_physical();
+        let num_threads = SpinButton::new_with_range(1.0, max_threads as f64, 1.0);
+        let num_threads_label = Label::new(Some("Threads"));
+        num_threads.set_value(max_threads as f64);
+
+        // Resolution
         let res_width = SpinButton::new_with_range(10.0, 2048.0, 100.0);
         let res_width_label = Label::new(Some("Width"));
         res_width.set_value(720.0);
+
 
         let stat_label = Label::new(None);
         let image = Image::new();
@@ -58,9 +67,11 @@ impl App {
         right_panel.pack_start(&status_box, false, false, 3);
 
         let left_panel = GtkBox::new(Orientation::Vertical, 0);
+
         let samples_box = GtkBox::new(Orientation::Horizontal, 0);
         samples_box.pack_start(&samples_label, false, false, 3);
         samples_box.pack_start(&num_samples, false, false, 3);
+
         let bucket_box = GtkBox::new(Orientation::Horizontal, 0);
         bucket_box.pack_start(&bucket_label, false, false, 3);
         bucket_box.pack_start(&bucket_size, false, false, 3);
@@ -69,7 +80,12 @@ impl App {
         res_box.pack_start(&res_width_label, false, false, 3);
         res_box.pack_start(&res_width, false, false, 3);
 
+        let thread_box = GtkBox::new(Orientation::Horizontal, 0);
+        thread_box.pack_start(&num_threads_label, false, false, 3);
+        thread_box.pack_start(&num_threads, false, false, 3);
+
         left_panel.pack_start(&samples_box, false, true, 3);
+        left_panel.pack_start(&thread_box, false, true, 3);
         left_panel.pack_start(&bucket_box, false, true, 3);
         left_panel.pack_start(&res_box, false, true, 3);
         left_panel.pack_end(&render_btn, false, true, 3);
@@ -78,7 +94,7 @@ impl App {
         split.add2(&right_panel);
 
         const ASPECT_RATIO: f32 = 16.0 / 9.0;
-        let mut image_buffer:Vec<u8> = Vec::new();
+        let mut image_buffer: Vec<u8> = Vec::new();
         let image_c = image.clone();
         let (s, r) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
         let progress_clone = progress.clone();
@@ -95,12 +111,11 @@ impl App {
             let samples = num_samples.get_value() as u32;
             let bucket_size = bucket_size.get_value() as u32;
             let buffer_ptr = Arc::new(AtomicPtr::new(_image_buf.borrow_mut().as_mut_ptr()));
-            // let buffer_ptr = Arc::clone(&buffer_ptr);
+            let num_threads = num_threads.get_value() as usize;
             let s = s.clone();
             let s2 = s.clone();
-            eprintln!("Rendering {}x{}", image_width, image_height);
             std::thread::spawn(move || {
-                let stats = render(image_width, image_height, samples, bucket_size, buffer_ptr,
+                let stats = render(image_width, image_height, samples, bucket_size, num_threads, buffer_ptr,
                                    move |prog| { s2.send(Event::Progress(prog)); });
                 s.send(Event::RenderCompleted(stats));
             });

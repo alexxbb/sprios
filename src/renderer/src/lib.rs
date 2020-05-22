@@ -92,7 +92,7 @@ fn world() -> World {
     world
 }
 
-pub fn render<F>(width: u32, height: u32, samples: u32, bucket: u32, image_ptr: Arc<AtomicPtr<u8>>, progress: F) -> RenderStats
+pub fn render<F>(width: u32, height: u32, samples: u32, bucket: u32, num_threads: usize, image_ptr: Arc<AtomicPtr<u8>>, progress: F) -> RenderStats
     where
         F: Fn(u32) + Send + Sync + 'static
 {
@@ -106,7 +106,7 @@ pub fn render<F>(width: u32, height: u32, samples: u32, bucket: u32, image_ptr: 
     let broker = Arc::new(Mutex::new(broker));
     let progress = Arc::new(progress);
     let timer = Instant::now();
-    let pool = ThreadPool::new(4);
+    let pool = ThreadPool::new(num_threads);
     for _ in 0..pool.max_count() {
         let broker = Arc::clone(&broker);
         let image_ptr = Arc::clone(&image_ptr);

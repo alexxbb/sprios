@@ -544,8 +544,8 @@ dependencies = [
  "gio",
  "glib",
  "gtk",
+ "num_cpus",
  "renderer",
- "threadpool",
 ]
 
 [[package]]
