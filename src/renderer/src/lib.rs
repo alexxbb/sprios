@@ -26,7 +26,6 @@ use std::collections::VecDeque;
 use threadpool::ThreadPool;
 use world::World;
 use std::sync::atomic::{Ordering, AtomicPtr};
-use std::thread::Thread;
 use std::thread;
 use crate::utils::Clip;
 
@@ -100,24 +99,22 @@ pub fn render<F>(width: u32, height: u32, samples: u32, bucket: u32, image_ptr: 
     const MAX_DEPTH: u32 = 10;
     let world = Arc::new(world());
     let camera = Arc::new(Camera::new());
-    let mut threads = Vec::new();
     let buckets = BucketGrid::new(width, height, bucket);
     let mut broker: VecDeque<Bucket> = std::collections::VecDeque::new();
     broker.extend(buckets);
     let total_buckets = broker.len() as u32;
     let broker = Arc::new(Mutex::new(broker));
-    let mut pix_time = 0u128;
     let progress = Arc::new(progress);
     let timer = Instant::now();
-    for _ in 0..4 {
+    let pool = ThreadPool::new(4);
+    for _ in 0..pool.max_count() {
         let broker = Arc::clone(&broker);
         let image_ptr = Arc::clone(&image_ptr);
         let world = Arc::clone(&world);
         let camera = Arc::clone(&camera);
         let progress = Arc::clone(&progress);
-        threads.push(thread::spawn(move || {
+        pool.execute(move || {
             let mut rng = rand::rngs::SmallRng::from_entropy();
-            use std::thread::{current, sleep};
             loop {
                 let mut broker = broker.lock().unwrap();
                 let bucket = broker.pop_front();
@@ -153,11 +150,9 @@ pub fn render<F>(width: u32, height: u32, samples: u32, bucket: u32, image_ptr: 
                     None => break
                 }
             }
-        }));
+        });
     }
-    for h in threads {
-        h.join();
-    }
+    pool.join();
     let render_time = timer.elapsed().as_secs_f64();
     let fps = 1.0 / render_time;
     let mrays = ((width as u128 * height as u128 * samples as u128) as f64 * fps) / 1.0e6;
