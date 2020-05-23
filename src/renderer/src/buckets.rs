@@ -109,8 +109,6 @@ impl Iterator for BucketGrid {
     }
 }
 
-fn main() {}
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -124,10 +124,10 @@ impl App {
                     num_threads,
                     buffer_ptr,
                     move |prog| {
-                        s2.send(Event::Progress(prog));
+                        s2.send(Event::Progress(prog)).unwrap();
                     },
                 );
-                s.send(Event::RenderCompleted(stats));
+                s.send(Event::RenderCompleted(stats)).unwrap();
             });
         });
         let _res_width = res_width.clone();
@@ -144,11 +144,11 @@ impl App {
                     let loader = PixbufLoader::new_with_type("pnm").unwrap();
                     let image_width = _res_width.get_value() as u32;
                     let image_height = (image_width as f32 / ASPECT_RATIO) as u32;
-                    loader.write(format!("P6\n{} {}\n255\n", image_width, image_height).as_bytes());
+                    loader.write(format!("P6\n{} {}\n255\n", image_width, image_height).as_bytes()).unwrap();
                     loader
                         .write_bytes(&bytes)
                         .expect("Could not write to buffer");
-                    loader.close();
+                    loader.close().unwrap();
                     image_c.set_from_pixbuf(loader.get_pixbuf().as_ref());
                     stat_label.set_text(&format!(
                         "Time: {:.4} sec | FPS: {:.4} | MRays/s: {:.2}",
