@@ -177,13 +177,14 @@ where
 #[cfg(test)]
 mod tests {
     use crate::{render, Arc, ImageBuffer, Mutex};
+    use std::sync::atomic::AtomicPtr;
 
     #[test]
     fn test_render() {
-        let buf = Vec::<u8>::new();
-        let mut buf = Arc::new(Vec::new());
+        let mut buf = Vec::<u8>::new();
         buf.resize(300 * 200 * 3, 0);
-        render(300, 200, 1, 10, buf.clone(), |_, _| {});
+        let img_ptr = Arc::new(AtomicPtr::new(buf.as_mut_ptr()));
+        render(300, 200, 1, 10, 2, img_ptr, |_| {});
         assert_eq!(buf.len(), 300 * 200 * 3);
     }
 }
