@@ -1,6 +1,6 @@
-use std::ops::{Add, Sub, AddAssign, MulAssign, DivAssign, Div, Mul, Neg};
 use rand;
 use rand::Rng;
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub};
 
 pub type Point3 = Vec3;
 pub type Color = Vec3;
@@ -14,13 +14,21 @@ pub struct Vec3 {
 
 impl From<(f32, f32, f32)> for Vec3 {
     fn from(t: (f32, f32, f32)) -> Self {
-        Vec3 { x: t.0, y: t.1, z: t.2 }
+        Vec3 {
+            x: t.0,
+            y: t.1,
+            z: t.2,
+        }
     }
 }
 
 impl From<&[f32; 3]> for Vec3 {
     fn from(a: &[f32; 3]) -> Self {
-        Vec3 { x: a[0], y: a[1], z: a[2] }
+        Vec3 {
+            x: a[0],
+            y: a[1],
+            z: a[2],
+        }
     }
 }
 
@@ -38,7 +46,6 @@ impl Vec3 {
     pub fn new(x: f32, y: f32, z: f32) -> Vec3 {
         Vec3 { x, y, z }
     }
-
 
     pub fn unit(&self) -> Vec3 {
         self / self.length()
@@ -81,7 +88,9 @@ impl Vec3 {
     pub fn random_in_unit_sphere() -> Self {
         loop {
             let p = Self::random();
-            if p.length_squared() >= 1.0 { continue; }
+            if p.length_squared() >= 1.0 {
+                continue;
+            }
             return p;
         }
     }
@@ -99,7 +108,11 @@ impl Vec3 {
         let a = rng.gen_range(0.0, 2.0 * std::f32::consts::PI);
         let z = rng.gen_range(-1.0f32, 1.0f32);
         let r = (1.0 - z * z).sqrt();
-        return Vec3 { x: r * f32::cos(a), y: r * f32::sin(a), z };
+        return Vec3 {
+            x: r * f32::cos(a),
+            y: r * f32::sin(a),
+            z,
+        };
     }
 }
 
@@ -172,7 +185,11 @@ impl Neg for &Vec3 {
     type Output = Vec3;
 
     fn neg(self) -> Self::Output {
-        Vec3 { x: -self.x, y: -self.y, z: -self.z }
+        Vec3 {
+            x: -self.x,
+            y: -self.y,
+            z: -self.z,
+        }
     }
 }
 
@@ -180,10 +197,13 @@ impl Neg for Vec3 {
     type Output = Vec3;
 
     fn neg(self) -> Self::Output {
-        Vec3 { x: -self.x, y: -self.y, z: -self.z }
+        Vec3 {
+            x: -self.x,
+            y: -self.y,
+            z: -self.z,
+        }
     }
 }
-
 
 impl<'a> AddAssign<&'a Vec3> for Vec3 {
     fn add_assign(&mut self, other: &'a Vec3) {
@@ -208,4 +228,3 @@ impl<'a> DivAssign<&'a Vec3> for Vec3 {
         self.z /= other.z;
     }
 }
-

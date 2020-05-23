@@ -1,15 +1,17 @@
-use gtk::{ApplicationWindow, Box as GtkBox, BoxExt,
-          Button, GtkWindowExt, Image, Label, LabelExt, Orientation,
-          Paned, ProgressBar, SpinButton, ProgressBarExt,
-          PanedExt, ContainerExt, ButtonExt, ImageExt, SpinButtonExt, WidgetExt};
+use gdk_pixbuf::PixbufLoader;
 use gio::ApplicationExt;
+use glib::signal::Inhibit;
+use gtk::{
+    ApplicationWindow, Box as GtkBox, BoxExt, Button, ButtonExt, ContainerExt, GtkWindowExt, Image,
+    ImageExt, Label, LabelExt, Orientation, Paned, PanedExt, ProgressBar, ProgressBarExt,
+    SpinButton, SpinButtonExt, WidgetExt,
+};
 use num_cpus;
 use renderer::{render, ImageBuffer, RenderStats};
-use std::sync::{Arc, Mutex};
-use std::rc::Rc;
-use gdk_pixbuf::{PixbufLoader};
-use std::sync::atomic::AtomicPtr;
 use std::cell::RefCell;
+use std::rc::Rc;
+use std::sync::atomic::AtomicPtr;
+use std::sync::{Arc, Mutex};
 
 #[derive(Copy, Clone)]
 pub enum Event {
@@ -52,7 +54,6 @@ impl App {
         let res_width = SpinButton::new_with_range(10.0, 2048.0, 100.0);
         let res_width_label = Label::new(Some("Width"));
         res_width.set_value(720.0);
-
 
         let stat_label = Label::new(None);
         let image = Image::new();
@@ -115,8 +116,17 @@ impl App {
             let s = s.clone();
             let s2 = s.clone();
             std::thread::spawn(move || {
-                let stats = render(image_width, image_height, samples, bucket_size, num_threads, buffer_ptr,
-                                   move |prog| { s2.send(Event::Progress(prog)); });
+                let stats = render(
+                    image_width,
+                    image_height,
+                    samples,
+                    bucket_size,
+                    num_threads,
+                    buffer_ptr,
+                    move |prog| {
+                        s2.send(Event::Progress(prog));
+                    },
+                );
                 s.send(Event::RenderCompleted(stats));
             });
         });
@@ -140,7 +150,10 @@ impl App {
                         .expect("Could not write to buffer");
                     loader.close();
                     image_c.set_from_pixbuf(loader.get_pixbuf().as_ref());
-                    stat_label.set_text(&format!("Time: {:.4} sec | FPS: {:.4} | MRays/s: {:.2}", stat.render_time, stat.fps, stat.mrays));
+                    stat_label.set_text(&format!(
+                        "Time: {:.4} sec | FPS: {:.4} | MRays/s: {:.2}",
+                        stat.render_time, stat.fps, stat.mrays
+                    ));
                 }
             }
             glib::Continue(true)
@@ -161,11 +174,12 @@ impl App {
         gtk_app.connect_activate(move |_| {
             app_c.on_activate();
         });
-    }
-}
-
-impl Drop for App {
-    fn drop(&mut self) {
-        eprintln!("Dropping app");
+        let app_c = gtk_app.clone();
+        app.window.connect_key_press_event(move |w, key| {
+            if matches!(key.get_keyval(), gdk::enums::key::Escape) {
+                app_c.quit();
+            }
+            Inhibit(false)
+        });
     }
 }

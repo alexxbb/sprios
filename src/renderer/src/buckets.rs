@@ -14,7 +14,7 @@ impl Bucket {
 
 pub struct BucketPixels {
     bucket: Bucket,
-    cursor: (u32, u32)
+    cursor: (u32, u32),
 }
 
 impl Iterator for BucketPixels {
@@ -22,12 +22,12 @@ impl Iterator for BucketPixels {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.cursor == self.bucket.bottom_right {
-            return None
+            return None;
         }
         for y in self.cursor.1..self.bucket.bottom_right.1 {
             for x in self.cursor.0..self.bucket.bottom_right.0 {
                 self.cursor.0 = x + 1;
-                return Some((y, x))
+                return Some((y, x));
             }
             self.cursor.1 = y + 1;
             self.cursor.0 = self.bucket.top_left.0;
@@ -41,10 +41,12 @@ impl IntoIterator for Bucket {
     type IntoIter = BucketPixels;
 
     fn into_iter(self) -> Self::IntoIter {
-        BucketPixels{bucket: self, cursor: self.top_left}
+        BucketPixels {
+            bucket: self,
+            cursor: self.top_left,
+        }
     }
 }
-
 
 impl Display for Bucket {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -70,7 +72,6 @@ impl BucketGrid {
     }
 }
 
-
 impl Iterator for BucketGrid {
     type Item = Bucket;
 
@@ -79,7 +80,10 @@ impl Iterator for BucketGrid {
             return None;
         }
         let mut top_left = self.cursor;
-        let mut bottom_right = (self.cursor.0 + self.bucket_size, self.cursor.1 + self.bucket_size);
+        let mut bottom_right = (
+            self.cursor.0 + self.bucket_size,
+            self.cursor.1 + self.bucket_size,
+        );
         // Advance forward
         self.cursor.0 += self.bucket_size;
         // Overflow
@@ -98,17 +102,14 @@ impl Iterator for BucketGrid {
         if bottom_right.1 > self.height {
             bottom_right.1 = self.height;
         }
-        Some(
-            Bucket {
-                top_left,
-                bottom_right
-            }
-)
+        Some(Bucket {
+            top_left,
+            bottom_right,
+        })
     }
 }
 
 fn main() {}
-
 
 #[cfg(test)]
 mod tests {
@@ -127,7 +128,23 @@ mod tests {
 
     #[test]
     fn test_2() {
-        assert_eq!(Bucket{top_left: (0,0), bottom_right: (5, 5)}.into_iter().count(), 25);
-        assert_eq!(Bucket{top_left: (10,10), bottom_right: (15, 15)}.into_iter().count(), 25);
+        assert_eq!(
+            Bucket {
+                top_left: (0, 0),
+                bottom_right: (5, 5)
+            }
+            .into_iter()
+            .count(),
+            25
+        );
+        assert_eq!(
+            Bucket {
+                top_left: (10, 10),
+                bottom_right: (15, 15)
+            }
+            .into_iter()
+            .count(),
+            25
+        );
     }
 }

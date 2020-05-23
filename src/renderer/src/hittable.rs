@@ -1,6 +1,6 @@
-use crate::vec::{Point3, Vec3};
 use crate::material::Material;
 use crate::ray::Ray;
+use crate::vec::{Point3, Vec3};
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -14,17 +14,21 @@ pub struct HitRecord {
 
 impl HitRecord {
     pub fn new(mat: Arc<dyn Material>) -> HitRecord {
-        HitRecord{
+        HitRecord {
             normal: Vec3::ZERO,
             front_face: true,
             mat,
             p: Point3::ZERO,
-            t: 0.0
+            t: 0.0,
         }
     }
     pub fn set_face_normal(&mut self, ray: &Ray, outward_normal: &Vec3) {
         self.front_face = ray.direction.dot(outward_normal) < 0.0;
-        self.normal = if self.front_face { *outward_normal } else { -*outward_normal };
+        self.normal = if self.front_face {
+            *outward_normal
+        } else {
+            -*outward_normal
+        };
     }
 }
 

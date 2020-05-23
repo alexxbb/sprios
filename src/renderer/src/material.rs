@@ -1,6 +1,6 @@
 use crate::hittable::HitRecord;
 use crate::ray::Ray;
-use crate::vec::{Vec3, Color};
+use crate::vec::{Color, Vec3};
 
 pub trait Material: Sync + Send {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<Ray>;
@@ -40,4 +40,3 @@ impl Material for Metal {
         &self.color
     }
 }
-

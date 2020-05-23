@@ -1,9 +1,8 @@
-use crate::hittable::{Hittable, HitRecord};
+use crate::hittable::{HitRecord, Hittable};
+use crate::material::Material;
 use crate::ray::Ray;
 use crate::vec::*;
-use crate::material::{Material };
 use std::sync::Arc;
-
 
 #[derive(Clone)]
 pub struct Sphere {
@@ -17,7 +16,7 @@ impl Sphere {
         Sphere {
             center: center.into(),
             radius,
-            material: mat
+            material: mat,
         }
     }
 }

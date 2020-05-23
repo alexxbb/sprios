@@ -1,11 +1,11 @@
-use crate::hittable::{Hittable, HitRecord};
-use std::sync::Arc;
+use crate::hittable::{HitRecord, Hittable};
 use crate::Ray;
+use std::sync::Arc;
 
 trait Foo: Send + Sync {}
 
 pub struct World {
-    pub(crate) objects: Vec<Arc<dyn Hittable>>
+    pub(crate) objects: Vec<Arc<dyn Hittable>>,
 }
 
 impl World {
@@ -13,7 +13,7 @@ impl World {
         World { objects: vec![] }
     }
     pub fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
-        let mut temp_rec:Option<HitRecord> = None;
+        let mut temp_rec: Option<HitRecord> = None;
         let mut closest_so_far = t_max;
 
         for obj in &self.objects {

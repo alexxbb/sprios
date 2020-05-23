@@ -1,5 +1,5 @@
-use crate::vec::{Vec3, Point3};
 use crate::ray::Ray;
+use crate::vec::{Point3, Vec3};
 
 #[derive(Clone)]
 pub struct Camera {
@@ -20,6 +20,9 @@ impl Camera {
     }
 
     pub fn get_ray(&self, u: f32, v: f32) -> Ray {
-        Ray::new(&self.origin, &(self.lower_left_corner + self.horizontal * u + self.vertical * v - self.origin))
+        Ray::new(
+            &self.origin,
+            &(self.lower_left_corner + self.horizontal * u + self.vertical * v - self.origin),
+        )
     }
 }

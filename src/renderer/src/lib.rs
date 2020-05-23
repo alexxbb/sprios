@@ -1,3 +1,4 @@
+mod buckets;
 mod camera;
 mod hittable;
 mod imagebuffer;
@@ -5,29 +6,28 @@ mod material;
 mod ray;
 mod sphere;
 mod utils;
-mod buckets;
-mod world;
 mod vec;
+mod world;
 
+use crate::buckets::BucketGrid;
+use crate::utils::Clip;
+use buckets::Bucket;
 pub use camera::Camera;
 pub use imagebuffer::ImageBuffer;
 pub use material::{Lambertian, Metal};
 use rand::{Rng, SeedableRng};
 pub use ray::Ray;
 use sphere::Sphere;
-use buckets::Bucket;
+use std::collections::VecDeque;
 use std::ops::DerefMut;
 use std::rc::Rc;
+use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, Mutex};
-pub use vec::{Color, Vec3};
-use std::time::{Duration, Instant};
-use crate::buckets::BucketGrid;
-use std::collections::VecDeque;
-use threadpool::ThreadPool;
-use world::World;
-use std::sync::atomic::{Ordering, AtomicPtr};
 use std::thread;
-use crate::utils::Clip;
+use std::time::{Duration, Instant};
+use threadpool::ThreadPool;
+pub use vec::{Color, Vec3};
+use world::World;
 
 // type Buffer = Arc<Mutex<ImageBuffer>>;
 
@@ -92,9 +92,17 @@ fn world() -> World {
     world
 }
 
-pub fn render<F>(width: u32, height: u32, samples: u32, bucket: u32, num_threads: usize, image_ptr: Arc<AtomicPtr<u8>>, progress: F) -> RenderStats
-    where
-        F: Fn(u32) + Send + Sync + 'static
+pub fn render<F>(
+    width: u32,
+    height: u32,
+    samples: u32,
+    bucket: u32,
+    num_threads: usize,
+    image_ptr: Arc<AtomicPtr<u8>>,
+    progress: F,
+) -> RenderStats
+where
+    F: Fn(u32) + Send + Sync + 'static,
 {
     const MAX_DEPTH: u32 = 10;
     let world = Arc::new(world());
@@ -123,14 +131,17 @@ pub fn render<F>(width: u32, height: u32, samples: u32, bucket: u32, num_threads
                 match bucket {
                     Some(bucket) => {
                         // eprintln!("{:?} with bucket {}", current(), &bucket);
-                        progress(((1.0 - buckets_left as f32 / total_buckets as f32) * 100.0) as u32);
+                        progress(
+                            ((1.0 - buckets_left as f32 / total_buckets as f32) * 100.0) as u32,
+                        );
                         // This is not right! The buffer is locked until this bucket finished.
                         let ptr = image_ptr.load(Ordering::Relaxed);
                         for (y, x) in bucket.pixels() {
                             let mut pixel_color = Color::ZERO;
                             for _ in 0..samples {
                                 let u = (x as f32 + rng.gen::<f32>()) / (width - 1) as f32;
-                                let v = ((height - y) as f32 + rng.gen::<f32>()) / (height - 1) as f32;
+                                let v =
+                                    ((height - y) as f32 + rng.gen::<f32>()) / (height - 1) as f32;
                                 let ray = camera.get_ray(u, v);
                                 pixel_color += &ray_color(&ray, &world, MAX_DEPTH);
                             }
@@ -147,7 +158,7 @@ pub fn render<F>(width: u32, height: u32, samples: u32, bucket: u32, num_threads
                             }
                         }
                     }
-                    None => break
+                    None => break,
                 }
             }
         });
@@ -156,7 +167,11 @@ pub fn render<F>(width: u32, height: u32, samples: u32, bucket: u32, num_threads
     let render_time = timer.elapsed().as_secs_f64();
     let fps = 1.0 / render_time;
     let mrays = ((width as u128 * height as u128 * samples as u128) as f64 * fps) / 1.0e6;
-    RenderStats{render_time, mrays, fps }
+    RenderStats {
+        render_time,
+        mrays,
+        fps,
+    }
 }
 
 #[cfg(test)]
