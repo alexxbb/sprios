@@ -79,7 +79,7 @@ impl Iterator for BucketGrid {
         if self.cursor.1 == self.height {
             return None;
         }
-        let mut top_left = self.cursor;
+        let top_left = self.cursor;
         let mut bottom_right = (
             self.cursor.0 + self.bucket_size,
             self.cursor.1 + self.bucket_size,

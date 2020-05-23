@@ -7,11 +7,11 @@ use gtk::{
     SpinButton, SpinButtonExt, WidgetExt,
 };
 use num_cpus;
-use renderer::{render, ImageBuffer, RenderStats};
+use renderer::{render, RenderStats};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::AtomicPtr;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
 
 #[derive(Copy, Clone)]
 pub enum Event {
@@ -95,7 +95,7 @@ impl App {
         split.add2(&right_panel);
 
         const ASPECT_RATIO: f32 = 16.0 / 9.0;
-        let mut image_buffer: Vec<u8> = Vec::new();
+        let image_buffer: Vec<u8> = Vec::new();
         let image_c = image.clone();
         let (s, r) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
         let progress_clone = progress.clone();
@@ -175,7 +175,7 @@ impl App {
             app_c.on_activate();
         });
         let app_c = gtk_app.clone();
-        app.window.connect_key_press_event(move |w, key| {
+        app.window.connect_key_press_event(move |_w, key| {
             if matches!(key.get_keyval(), gdk::enums::key::Escape) {
                 app_c.quit();
             }

@@ -19,12 +19,12 @@ use rand::{Rng, SeedableRng};
 pub use ray::Ray;
 use sphere::Sphere;
 use std::collections::VecDeque;
-use std::ops::DerefMut;
-use std::rc::Rc;
+
+
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::{Duration, Instant};
+
+use std::time::{Instant};
 use threadpool::ThreadPool;
 pub use vec::{Color, Vec3};
 use world::World;
@@ -176,7 +176,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{render, Arc, ImageBuffer, Mutex};
+    use crate::{render, Arc};
     use std::sync::atomic::AtomicPtr;
 
     #[test]
