@@ -546,6 +546,7 @@ dependencies = [
  "gtk",
  "num_cpus",
  "renderer",
+ "threadpool",
 ]
 
 [[package]]

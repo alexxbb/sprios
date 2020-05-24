@@ -28,6 +28,7 @@ use std::time::{Instant};
 use threadpool::ThreadPool;
 pub use vec::{Color, Vec3};
 use world::World;
+use std::borrow::Cow;
 
 // type Buffer = Arc<Mutex<ImageBuffer>>;
 
@@ -97,12 +98,12 @@ pub fn render<F>(
     height: u32,
     samples: u32,
     bucket: u32,
-    num_threads: usize,
     image_ptr: Arc<AtomicPtr<u8>>,
+    pool: Option<&threadpool::ThreadPool>,
     progress: F,
 ) -> RenderStats
-where
-    F: Fn(u32) + Send + Sync + 'static,
+    where
+        F: Fn(u32) + Send + Sync + 'static,
 {
     const MAX_DEPTH: u32 = 10;
     let world = Arc::new(world());
@@ -114,7 +115,7 @@ where
     let broker = Arc::new(Mutex::new(broker));
     let progress = Arc::new(progress);
     let timer = Instant::now();
-    let pool = ThreadPool::new(num_threads);
+    let pool = pool.map_or_else(||Cow::Owned(ThreadPool::new(10)), |v| Cow::Borrowed(v));
     for _ in 0..pool.max_count() {
         let broker = Arc::clone(&broker);
         let image_ptr = Arc::clone(&image_ptr);
@@ -184,7 +185,7 @@ mod tests {
         let mut buf = Vec::<u8>::new();
         buf.resize(300 * 200 * 3, 0);
         let img_ptr = Arc::new(AtomicPtr::new(buf.as_mut_ptr()));
-        render(300, 200, 1, 10, 2, img_ptr, |_| {});
+        render(300, 200, 1, 10, img_ptr, None, |_| {});
         assert_eq!(buf.len(), 300 * 200 * 3);
     }
 }
