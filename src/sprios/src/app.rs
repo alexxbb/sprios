@@ -46,7 +46,7 @@ impl App {
         // Bucket size
         let bucket_size = SpinButton::new_with_range(4.0, 100.0, 4.0);
         let bucket_label = Label::new(Some("Bucket"));
-        bucket_size.set_value(32.0);
+        bucket_size.set_value(16.0);
 
         // Number of threads
         let max_threads = num_cpus::get_physical();

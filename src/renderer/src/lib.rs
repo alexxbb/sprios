@@ -62,7 +62,7 @@ fn world() -> World {
     world.add(Sphere::new(
         (0.0, -100.5, -1.0),
         100.0,
-        Arc::new(Lambertian {
+        Box::new(Lambertian {
             color: (0.5, 0.5, 0.5).into(),
         }),
     ));
@@ -70,7 +70,7 @@ fn world() -> World {
     world.add(Sphere::new(
         (-1.0, 0.0, -1.0),
         0.5,
-        Arc::new(Lambertian {
+        Box::new(Lambertian {
             color: (0.9, 0.1, 0.1).into(),
         }),
     ));
@@ -78,7 +78,7 @@ fn world() -> World {
     world.add(Sphere::new(
         (0.0, 0.0, -1.0),
         0.5,
-        Arc::new(Lambertian {
+        Box::new(Lambertian {
             color: (0.1, 0.9, 0.1).into(),
         }),
     ));
@@ -86,7 +86,7 @@ fn world() -> World {
     world.add(Sphere::new(
         (1.0, 0.0, -1.0),
         0.5,
-        Arc::new(Lambertian {
+        Box::new(Lambertian {
             color: (0.1, 0.1, 0.9).into(),
         }),
     ));
@@ -131,11 +131,9 @@ pub fn render<F>(
                 drop(broker);
                 match bucket {
                     Some(bucket) => {
-                        // eprintln!("{:?} with bucket {}", current(), &bucket);
                         progress(
                             ((1.0 - buckets_left as f32 / total_buckets as f32) * 100.0) as u32,
                         );
-                        // This is not right! The buffer is locked until this bucket finished.
                         let ptr = image_ptr.load(Ordering::Relaxed);
                         for (y, x) in bucket.pixels() {
                             let mut pixel_color = Color::ZERO;

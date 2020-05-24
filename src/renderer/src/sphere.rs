@@ -2,17 +2,15 @@ use crate::hittable::{HitRecord, Hittable};
 use crate::material::Material;
 use crate::ray::Ray;
 use crate::vec::*;
-use std::sync::Arc;
 
-#[derive(Clone)]
 pub struct Sphere {
     pub center: Point3,
     pub radius: f32,
-    pub material: Arc<dyn Material>,
+    pub material: Box<dyn Material>,
 }
 
 impl Sphere {
-    pub fn new<P: Into<Point3>>(center: P, radius: f32, mat: Arc<dyn Material>) -> Sphere {
+    pub fn new<P: Into<Point3>>(center: P, radius: f32, mat: Box<dyn Material>) -> Sphere {
         Sphere {
             center: center.into(),
             radius,
@@ -23,6 +21,7 @@ impl Sphere {
 
 impl Hittable for Sphere {
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
+        // TODO. Maybe mut by reference instead of return?
         let oc = ray.origin - self.center;
         let a = ray.direction.length_squared();
         let half_b = oc.dot(&ray.direction);
@@ -32,7 +31,7 @@ impl Hittable for Sphere {
             let root = discriminant.sqrt();
             let temp = (-half_b - root) / a;
             if temp < t_max && temp > t_min {
-                let mut rec = HitRecord::new(Arc::clone(&self.material));
+                let mut rec = HitRecord::new(self.material.as_ref());
                 rec.t = temp;
                 rec.p = ray.at(temp);
                 let outward_normal = (rec.p - self.center) / self.radius;
@@ -41,7 +40,7 @@ impl Hittable for Sphere {
             }
             let temp = (-half_b + root) / a;
             if temp < t_max && temp > t_min {
-                let mut rec = HitRecord::new(Arc::clone(&self.material));
+                let mut rec = HitRecord::new(self.material.as_ref());
                 rec.t = temp;
                 rec.p = ray.at(temp);
                 let outward_normal = (rec.p - self.center) / self.radius;
