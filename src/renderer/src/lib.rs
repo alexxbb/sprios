@@ -29,6 +29,7 @@ use threadpool::ThreadPool;
 pub use vec::{Color, Vec3};
 use world::World;
 use std::borrow::Cow;
+use crate::vec::Point3;
 
 // type Buffer = Arc<Mutex<ImageBuffer>>;
 
@@ -107,7 +108,12 @@ pub fn render<F>(
 {
     const MAX_DEPTH: u32 = 10;
     let world = Arc::new(world());
-    let camera = Arc::new(Camera::new());
+    let camera = Arc::new(Camera::new(
+        Point3::new(-2.0, 2.0, 1.0),
+        Point3::new(0.0,0.0, -1.0),
+        Vec3::new(0.0, 1.0, 0.0),
+        40,
+        width as f32/height as f32));
     let buckets = BucketGrid::new(width, height, bucket);
     let mut broker: VecDeque<Bucket> = std::collections::VecDeque::new();
     broker.extend(buckets);
