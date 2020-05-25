@@ -33,22 +33,22 @@ use crate::vec::Point3;
 
 // type Buffer = Arc<Mutex<ImageBuffer>>;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct RenderStats {
     pub render_time: f64,
     pub mrays: f64,
     pub fps: f64,
 }
 
-fn ray_color(ray: &Ray, world: &World, depth: u32) -> Color {
+fn ray_color(ray: &Ray, world: &World, depth: u32, rng: &mut rand::rngs::SmallRng) -> Color {
     if depth == 0 {
         // Max recursion depth reached
         return Color::ZERO;
     }
 
     if let Some(rec) = world.hit(ray, 0.001, f32::INFINITY) {
-        if let Some(ray) = rec.mat.scatter(ray, &rec) {
-            return rec.mat.color() * ray_color(&ray, world, depth - 1);
+        if let Some(ray) = rec.mat.scatter(ray, &rec, Some(rng)) {
+            return rec.mat.color() * ray_color(&ray, world, depth - 1, rng);
         }
         return Color::ZERO;
     }
@@ -148,7 +148,7 @@ pub fn render<F>(
                                 let v =
                                     ((height - y) as f32 + rng.gen::<f32>()) / (height - 1) as f32;
                                 let ray = camera.get_ray(u, v);
-                                pixel_color += &ray_color(&ray, &world, MAX_DEPTH);
+                                pixel_color += &ray_color(&ray, &world, MAX_DEPTH, &mut rng);
                             }
                             let idx = ((y * width + x) * 3) as usize;
                             let scale = 1.0 / samples as f32;

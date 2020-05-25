@@ -3,7 +3,7 @@ use crate::ray::Ray;
 use crate::vec::{Color, Vec3};
 
 pub trait Material: Sync + Send {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<Ray>;
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord, rng: Option<&mut dyn rand::RngCore>) -> Option<Ray>;
     fn color(&self) -> &Color;
 }
 
@@ -16,8 +16,16 @@ pub struct Metal {
 }
 
 impl Material for Lambertian {
-    fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<Ray> {
-        let scatter_direction = &rec.normal + Vec3::random_unit_vector();
+    fn scatter(&self, _r_in: &Ray, rec: &HitRecord, rng: Option<&mut dyn rand::RngCore>) -> Option<Ray> {
+        let mut trng: rand::rngs::ThreadRng;
+        let mut rng = match rng {
+            Some(r) => r,
+            None => {
+                trng = rand::thread_rng();
+                &mut trng
+            }
+        };
+        let scatter_direction = &rec.normal + Vec3::random_unit_vector(&mut rng);
         Some(Ray::new(&rec.p, &scatter_direction))
     }
 
@@ -27,7 +35,7 @@ impl Material for Lambertian {
 }
 
 impl Material for Metal {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<Ray> {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord, _rng: Option<&mut dyn rand::RngCore>) -> Option<Ray> {
         let reflected = r_in.direction.unit().reflect(&rec.normal);
         let scattered = Ray::new(&rec.p, &reflected);
         if scattered.direction.dot(&rec.normal) > 0.0 {

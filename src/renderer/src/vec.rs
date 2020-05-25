@@ -103,8 +103,7 @@ impl Vec3 {
         return -in_unit_sphere;
     }
 
-    pub fn random_unit_vector() -> Self {
-        let mut rng = rand::thread_rng();
+    pub fn random_unit_vector(rng: &mut impl rand::RngCore) -> Self {
         let a = rng.gen_range(0.0, 2.0 * std::f32::consts::PI);
         let z = rng.gen_range(-1.0f32, 1.0f32);
         let r = (1.0 - z * z).sqrt();

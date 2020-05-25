@@ -4,11 +4,15 @@ version = "0.1.0"
 authors = ["alexbb <hou.alexx@gmail.com>"]
 edition = "2018"
 
+[features]
+default = []
+command = ['getopts']
+
 [dependencies]
-getopts = "0.2.21"
+renderer = {path = "../renderer"}
+getopts = {version = "0.2.21", optional = true}
 num_cpus = "1.13.0"
 threadpool = "1.8.1"
-renderer = {path = "../renderer"}
 
 [dependencies.gtk]
 version = "0.8.1"
