@@ -5,7 +5,7 @@ authors = ["alexbb <hou.alexx@gmail.com>"]
 edition = "2018"
 
 [features]
-default = []
+default = ['gtk', 'gdk-pixbuf', 'gdk', 'glib', 'gio']
 command = ['getopts']
 
 [dependencies]
@@ -17,17 +17,22 @@ threadpool = "1.8.1"
 [dependencies.gtk]
 version = "0.8.1"
 features = ["v3_16"]
+optional = true
 
 [dependencies.gdk-pixbuf]
 version = "0.8.0"
 features = ["dox"]
+optional = true
 
 [dependencies.gdk]
 version = "0.12.1"
+optional = true
 
 [dependencies.glib]
 version = "0.9.3"
+optional = true
 
 [dependencies.gio]
 version = ""
 features = ["v2_44"]
+optional = true
