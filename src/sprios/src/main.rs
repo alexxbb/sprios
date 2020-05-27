@@ -1,8 +1,11 @@
+use renderer::{render, Camera, World, Lambertian, Sphere, Vec3, Point3};
+use rand;
+use rand::Rng;
 
-#[cfg(not(feature="command"))]
+#[cfg(not(feature = "command"))]
 mod app;
 
-#[cfg(not(feature="command"))]
+#[cfg(not(feature = "command"))]
 fn gui() {
     use app::App as SpriosApp;
     use gio::prelude::*;
@@ -12,16 +15,79 @@ fn gui() {
     app.run(&args);
 }
 
-#[cfg(feature="command")]
+fn world_ivan(loc: &Vec3, rad: f32, splits: u32, recur: u32) -> World {
+    fn recurse(world: &mut World, loc: &Vec3, rad: f32, splits: u32, recur: u32) {
+        let mut rng = rand::thread_rng();
+        for _ in 0..splits {
+            let center = Vec3::random_in_unit_sphere().unit() * rad * 1.5 + loc;
+            world.add(Sphere::new(
+                center.clone(),
+                rad * 0.5,
+                Box::new(Lambertian { color: (rng.gen(), rng.gen(), rng.gen()).into() }),
+            ));
+            if recur > 0 {
+                recurse(world, &center, rad * 0.5, splits, recur - 1);
+            }
+        }
+    }
+    let mut world = World::new();
+    // // Globe sphere
+    world.add(Sphere::new(
+        (0.0, -100.5, -1.0),
+        100.0,
+        Box::new(Lambertian {
+            color: (0.5, 0.5, 0.5).into(),
+        }),
+    ));
+    recurse(&mut world, loc, rad, splits, recur);
+    world
+}
+
+fn world_book() -> World {
+    let mut world = World::new();
+    // // Globe sphere
+    world.add(Sphere::new(
+        (0.0, -100.5, -1.0),
+        100.0,
+        Box::new(Lambertian {
+            color: (0.5, 0.5, 0.5).into(),
+        }),
+    ));
+    // Red
+    world.add(Sphere::new(
+        (-1.0, 0.0, -1.0),
+        0.5,
+        Box::new(Lambertian {
+            color: (0.9, 0.1, 0.1).into(),
+        }),
+    ));
+    // Green
+    world.add(Sphere::new(
+        (0.0, 0.0, -1.0),
+        0.5,
+        Box::new(Lambertian {
+            color: (0.1, 0.9, 0.1).into(),
+        }),
+    ));
+    // Blue
+    world.add(Sphere::new(
+        (1.0, 0.0, -1.0),
+        0.5,
+        Box::new(Lambertian {
+            color: (0.1, 0.1, 0.9).into(),
+        }),
+    ));
+    world
+}
+
+#[cfg(feature = "command")]
 fn cmd() {
-    use renderer::{render};
     use std::io::BufWriter;
     use std::io::Write;
     use std::sync::atomic::AtomicPtr;
     use std::sync::Arc;
 
-
-    let args:Vec<String> = std::env::args().collect();
+    let args: Vec<String> = std::env::args().collect();
     let mut opts = getopts::Options::new();
     let aspect_ratio: f32 = 16.0 / 9.0;
     opts.optopt("w", "width", "Image width", "WIDTH");
@@ -32,42 +98,60 @@ fn cmd() {
 
     let args = match opts.parse(args) {
         Ok(m) => m,
-        Err(e) => {panic!(e.to_string())}
+        Err(e) => { panic!(e.to_string()) }
     };
 
     if args.opt_present("h") {
         println!("{}", opts.short_usage("SPRIOS"));
-        return
+        return;
     }
 
     let image_width: u32 = match args.opt_str("w") {
-        Some(s) => {s.parse().unwrap()},
+        Some(s) => { s.parse().unwrap() }
         None => 720
     };
     let image_height: u32 = (image_width as f32 / aspect_ratio) as u32;
     let samples_per_pixel: u32 = match args.opt_str("s") {
-        Some(s) => {s.parse().unwrap()},
-        None=> 10
+        Some(s) => { s.parse().unwrap() }
+        None => 10
     };
     let bucket: u32 = match args.opt_str("b") {
-        Some(s) => {s.parse().unwrap()},
-        None=> 32
+        Some(s) => { s.parse().unwrap() }
+        None => 32
     };
     let num_threads: usize = match args.opt_str("t") {
-        Some(s) => {s.parse().unwrap()},
-        None=> num_cpus::get_physical()
+        Some(s) => { s.parse().unwrap() }
+        None => num_cpus::get()
     };
 
     let pool = threadpool::ThreadPool::new(num_threads);
 
-    let mut img_buf:Vec<u8> = Vec::new();
+    let mut img_buf: Vec<u8> = Vec::new();
     img_buf.resize((image_width * image_height * 3) as usize, 0);
     let img_ptr = Arc::new(AtomicPtr::new(img_buf.as_mut_ptr()));
 
-    let stat = render(image_width, image_height, samples_per_pixel, bucket, img_ptr, Some(&pool), |prog| {
-        eprint!("\rRendering: {}%", prog);
-        std::io::stderr().flush().unwrap();
-    });
+    let camera = Arc::new(Camera::new(
+        Point3::new(0.0, 0.0, 2.0),
+        Point3::new(0.0, 0.0, -1.0),
+        Vec3::new(0.0, 1.0, 0.0),
+        40,
+        image_width as f32 / image_height as f32));
+    // let world = Arc::new(world_book());
+    let world = Arc::new(world_ivan(&Vec3::new(-0.5, -0.5, -0.5), 0.5, 3, 5));
+    let stat = render(
+        image_width,
+        image_height,
+        samples_per_pixel,
+        bucket,
+        img_ptr,
+        Some(&pool),
+        world,
+        camera,
+        |prog| {
+            eprint!("\rRendering: {}%", prog);
+            std::io::stderr().flush().unwrap();
+        }
+    );
 
     eprintln!("\nSaving image.ppm");
     use std::fs::File;
@@ -90,8 +174,8 @@ fn cmd() {
 }
 
 fn main() {
-    #[cfg(feature="command")]
-    cmd();
-    #[cfg(not(feature="command"))]
-    gui();
+    #[cfg(feature = "command")]
+        cmd();
+    #[cfg(not(feature = "command"))]
+        gui();
 }

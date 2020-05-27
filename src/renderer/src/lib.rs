@@ -14,10 +14,9 @@ use crate::utils::Clip;
 use buckets::Bucket;
 pub use camera::Camera;
 pub use imagebuffer::ImageBuffer;
-pub use material::{Lambertian, Metal};
+pub use material::*;
 use rand::{Rng, SeedableRng};
 pub use ray::Ray;
-use sphere::Sphere;
 use std::collections::VecDeque;
 
 
@@ -26,10 +25,10 @@ use std::sync::{Arc, Mutex};
 
 use std::time::{Instant};
 use threadpool::ThreadPool;
-pub use vec::{Color, Vec3};
-use world::World;
+pub use vec::{Color, Vec3, Point3};
+pub use world::World;
+pub use sphere::Sphere;
 use std::borrow::Cow;
-use crate::vec::Point3;
 
 // type Buffer = Arc<Mutex<ImageBuffer>>;
 
@@ -57,42 +56,6 @@ fn ray_color(ray: &Ray, world: &World, depth: u32, rng: &mut rand::rngs::SmallRn
     Color::new(1.0, 1.0, 1.0) * (1.0 - t) + Color::new(0.5, 0.7, 1.0) * t
 }
 
-fn world() -> World {
-    let mut world = World::new();
-    // // Globe sphere
-    world.add(Sphere::new(
-        (0.0, -100.5, -1.0),
-        100.0,
-        Box::new(Lambertian {
-            color: (0.5, 0.5, 0.5).into(),
-        }),
-    ));
-    // Red
-    world.add(Sphere::new(
-        (-1.0, 0.0, -1.0),
-        0.5,
-        Box::new(Lambertian {
-            color: (0.9, 0.1, 0.1).into(),
-        }),
-    ));
-    // Green
-    world.add(Sphere::new(
-        (0.0, 0.0, -1.0),
-        0.5,
-        Box::new(Lambertian {
-            color: (0.1, 0.9, 0.1).into(),
-        }),
-    ));
-    // Blue
-    world.add(Sphere::new(
-        (1.0, 0.0, -1.0),
-        0.5,
-        Box::new(Lambertian {
-            color: (0.1, 0.1, 0.9).into(),
-        }),
-    ));
-    world
-}
 
 pub fn render<F>(
     width: u32,
@@ -101,19 +64,14 @@ pub fn render<F>(
     bucket: u32,
     image_ptr: Arc<AtomicPtr<u8>>,
     pool: Option<&threadpool::ThreadPool>,
+    world: Arc<World>,
+    camera: Arc<Camera>,
     progress: F,
 ) -> RenderStats
     where
         F: Fn(u32) + Send + Sync + 'static,
 {
     const MAX_DEPTH: u32 = 10;
-    let world = Arc::new(world());
-    let camera = Arc::new(Camera::new(
-        Point3::new(-2.0, 2.0, 1.0),
-        Point3::new(0.0,0.0, -1.0),
-        Vec3::new(0.0, 1.0, 0.0),
-        40,
-        width as f32/height as f32));
     let buckets = BucketGrid::new(width, height, bucket);
     let mut broker: VecDeque<Bucket> = std::collections::VecDeque::new();
     broker.extend(buckets);
