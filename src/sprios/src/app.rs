@@ -1,4 +1,5 @@
-use gdk_pixbuf::PixbufLoader;
+use crate::worlds::*;
+use gdk_pixbuf::{PixbufLoader, Pixbuf};
 use gio::ApplicationExt;
 use glib::{clone};
 use glib::signal::Inhibit;
@@ -7,13 +8,17 @@ use gtk::{
     ImageExt, Label, LabelExt, Orientation, Paned, PanedExt, ProgressBar, ProgressBarExt,
     SpinButton, SpinButtonExt, WidgetExt,
 };
+use gdk_pixbuf::PixbufLoaderExt;
+use glib::Bytes;
 use num_cpus;
-use renderer::{render, RenderStats};
+use renderer::{render, RenderStats, Camera, Vec3, Point3};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::AtomicPtr;
 use std::sync::{Arc};
 use threadpool::{ThreadPool};
+
+static LOGO: &[u8; 6644] = &include_bytes!("../rust-logo.png");
 
 #[derive(Copy, Clone)]
 pub enum Event {
@@ -24,6 +29,7 @@ pub enum Event {
 
 pub struct App {
     pub window: ApplicationWindow,
+    world: Arc<World>,
 }
 
 impl App {
@@ -32,7 +38,8 @@ impl App {
         window.set_title("SPRIOS");
         window.set_default_size(920, 470);
         gtk::Window::set_default_icon_name("face-smirk");
-        Rc::new(App { window })
+        let world = world_book();
+        Rc::new(App { window, world: Arc::new(world) })
     }
 
     pub fn build_ui(&self) {
@@ -49,7 +56,7 @@ impl App {
         bucket_size.set_value(16.0);
 
         // Number of threads
-        let max_threads = num_cpus::get_physical();
+        let max_threads = num_cpus::get();
         let num_threads = SpinButton::new_with_range(1.0, max_threads as f64, 1.0);
         let num_threads_label = Label::new(Some("Threads"));
         num_threads.set_value(max_threads as f64);
@@ -58,6 +65,15 @@ impl App {
         let res_width = SpinButton::new_with_range(10.0, 2048.0, 100.0);
         let res_width_label = Label::new(Some("Width"));
         res_width.set_value(720.0);
+
+        // Logo
+        let logo = Image::new();
+        let loader = PixbufLoader::new_with_type("png").unwrap();
+        loader.write_bytes(&Bytes::from_static(LOGO)).unwrap();
+        loader.close().unwrap();
+        let pixbuf = loader.get_pixbuf().unwrap();
+        let pixbuf = pixbuf.scale_simple(100, 100, gdk_pixbuf::InterpType::Bilinear);
+        logo.set_from_pixbuf(pixbuf.as_ref());
 
         let stat_label = Label::new(None);
         let gtk_image = Image::new();
@@ -94,6 +110,7 @@ impl App {
         left_panel.pack_start(&res_box, false, true, 3);
         left_panel.pack_end(&render_btn, false, true, 3);
         left_panel.pack_end(&progress, false, true, 3);
+        left_panel.pack_end(&logo, false, true, 3);
         split.add1(&left_panel);
         split.add2(&right_panel);
 
@@ -103,8 +120,9 @@ impl App {
         let progress_clone = progress.clone();
         let image_buf = Rc::new(RefCell::new(image_buffer));
         let thread_pool = RefCell::new(ThreadPool::new(num_cpus::get_physical()));
+        let world = Arc::clone(&self.world);
         render_btn.connect_clicked(
-            clone!(@weak image_buf, @weak res_width, @strong thread_pool => move |_| {
+            clone!(@weak image_buf, @weak res_width, @strong thread_pool, @strong world => move |_| {
             let image_width = res_width.get_value() as u32;
             let image_height = (image_width as f32 / ASPECT_RATIO) as u32;
             let cap = (image_height * image_width * 3) as usize;
@@ -113,9 +131,15 @@ impl App {
             let samples = num_samples.get_value() as u32;
             let bucket_size = bucket_size.get_value() as u32;
             let buffer_ptr = Arc::new(AtomicPtr::new(image_buf.borrow_mut().as_mut_ptr()));
+            let camera = Arc::new(Camera::new(
+                Point3::new(0.0, 0.0, 2.0),
+                Point3::new(0.0, 0.0, -1.0),
+                Vec3::new(0.0, 1.0, 0.0),
+                40,
+                image_width as f32 / image_height as f32));
             thread_pool.borrow_mut().set_num_threads(num_threads.get_value() as usize);
             std::thread::spawn(
-                clone!(@strong s, @strong thread_pool => move || {
+                clone!(@strong s, @strong thread_pool, @strong world => move || {
                 let stats = render(
                     image_width,
                     image_height,
@@ -123,6 +147,8 @@ impl App {
                     bucket_size,
                     buffer_ptr,
                     Some(&thread_pool.borrow()),
+                    world,
+                    camera,
                     clone!(@strong s => move |prog| {
                         s.send(Event::Progress(prog)).unwrap();
                     }),
@@ -137,8 +163,6 @@ impl App {
                     progress.set_fraction(frac);
                 }
                 Event::RenderCompleted(stat) => {
-                    use gdk_pixbuf::PixbufLoaderExt;
-                    use glib::Bytes;
                     let bytes = Bytes::from(&image_buf.borrow().as_ref());
                     let loader = PixbufLoader::new_with_type("pnm").unwrap();
                     let image_width = res_width.get_value() as u32;
