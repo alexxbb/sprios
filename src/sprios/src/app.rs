@@ -1,5 +1,5 @@
 use crate::worlds::*;
-use gdk_pixbuf::{PixbufLoader, Pixbuf};
+use gdk_pixbuf::{PixbufLoader};
 use gio::ApplicationExt;
 use glib::{clone};
 use glib::signal::Inhibit;
@@ -18,7 +18,7 @@ use std::sync::atomic::AtomicPtr;
 use std::sync::{Arc};
 use threadpool::{ThreadPool};
 
-static LOGO: &[u8; 6644] = &include_bytes!("../rust-logo.png");
+static LOGO: &[u8;33647] = &include_bytes!("../rust-logo.png");
 
 #[derive(Copy, Clone)]
 pub enum Event {
@@ -46,7 +46,7 @@ impl App {
         let render_btn = Button::new_with_label("Render");
         let split = Paned::new(Orientation::Horizontal);
         // Samples
-        let num_samples = SpinButton::new_with_range(1.0, 500.0, 5.0);
+        let num_samples = SpinButton::new_with_range(1.0, 32.0, 1.0);
         num_samples.set_value(3.0);
         let samples_label = Label::new(Some("Samples"));
 
@@ -72,7 +72,7 @@ impl App {
         loader.write_bytes(&Bytes::from_static(LOGO)).unwrap();
         loader.close().unwrap();
         let pixbuf = loader.get_pixbuf().unwrap();
-        let pixbuf = pixbuf.scale_simple(100, 100, gdk_pixbuf::InterpType::Bilinear);
+        let pixbuf = pixbuf.scale_simple(120, 120, gdk_pixbuf::InterpType::Bilinear);
         logo.set_from_pixbuf(pixbuf.as_ref());
 
         let stat_label = Label::new(None);
@@ -90,19 +90,19 @@ impl App {
 
         let samples_box = GtkBox::new(Orientation::Horizontal, 0);
         samples_box.pack_start(&samples_label, false, false, 3);
-        samples_box.pack_start(&num_samples, false, false, 3);
+        samples_box.pack_start(&num_samples, true, true, 3);
 
         let bucket_box = GtkBox::new(Orientation::Horizontal, 0);
         bucket_box.pack_start(&bucket_label, false, false, 3);
-        bucket_box.pack_start(&bucket_size, false, false, 3);
+        bucket_box.pack_start(&bucket_size, true, true, 3);
 
         let res_box = GtkBox::new(Orientation::Horizontal, 0);
         res_box.pack_start(&res_width_label, false, false, 3);
-        res_box.pack_start(&res_width, false, false, 3);
+        res_box.pack_start(&res_width, true, true, 3);
 
         let thread_box = GtkBox::new(Orientation::Horizontal, 0);
         thread_box.pack_start(&num_threads_label, false, false, 3);
-        thread_box.pack_start(&num_threads, false, false, 3);
+        thread_box.pack_start(&num_threads, true, true, 3);
 
         left_panel.pack_start(&samples_box, false, true, 3);
         left_panel.pack_start(&thread_box, false, true, 3);

@@ -76,10 +76,12 @@ pub fn render<F>(
     let mut broker: VecDeque<Bucket> = std::collections::VecDeque::new();
     broker.extend(buckets);
     let total_buckets = broker.len() as u32;
+    let samples = samples.pow(2);
+    let samples_scale = 1.0 / samples as f32;
     let broker = Arc::new(Mutex::new(broker));
     let progress = Arc::new(progress);
     let timer = Instant::now();
-    let pool = pool.map_or_else(||Cow::Owned(ThreadPool::new(10)), |v| Cow::Borrowed(v));
+    let pool = pool.map_or_else(|| Cow::Owned(ThreadPool::new(10)), |v| Cow::Borrowed(v));
     for _ in 0..pool.max_count() {
         let broker = Arc::clone(&broker);
         let image_ptr = Arc::clone(&image_ptr);
@@ -109,10 +111,9 @@ pub fn render<F>(
                                 pixel_color += &ray_color(&ray, &world, MAX_DEPTH, &mut rng);
                             }
                             let idx = ((y * width + x) * 3) as usize;
-                            let scale = 1.0 / samples as f32;
-                            let r = (pixel_color.x * scale).sqrt();
-                            let g = (pixel_color.y * scale).sqrt();
-                            let b = (pixel_color.z * scale).sqrt();
+                            let r = (pixel_color.x * samples_scale).sqrt();
+                            let g = (pixel_color.y * samples_scale).sqrt();
+                            let b = (pixel_color.z * samples_scale).sqrt();
 
                             unsafe {
                                 ptr.add(idx + 0).write((256.0 * r.clip(0.0, 0.999)) as u8);
@@ -140,6 +141,7 @@ pub fn render<F>(
 #[cfg(test)]
 mod tests {
     use crate::{render, Arc};
+    use super::*;
     use std::sync::atomic::AtomicPtr;
 
     #[test]
@@ -147,7 +149,22 @@ mod tests {
         let mut buf = Vec::<u8>::new();
         buf.resize(300 * 200 * 3, 0);
         let img_ptr = Arc::new(AtomicPtr::new(buf.as_mut_ptr()));
-        render(300, 200, 1, 10, img_ptr, None, |_| {});
+        let mut world = World::new();
+        world.add(Sphere::new(
+            (0.0, -100.5, -1.0),
+            100.0,
+            Box::new(Lambertian {
+                color: (0.5, 0.5, 0.5).into(),
+            }),
+        ));
+        let world = Arc::new(world);
+        let camera = Arc::new(Camera::new(
+            Point3::new(0.0, 0.0, 2.0),
+            Point3::new(0.0, 0.0, -1.0),
+            Vec3::new(0.0, 1.0, 0.0),
+            40,
+            300 as f32 / 200 as f32));
+        render(300, 200, 1, 10, img_ptr, None, world, camera, |_| {});
         assert_eq!(buf.len(), 300 * 200 * 3);
     }
 }
