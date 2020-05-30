@@ -66,6 +66,17 @@ impl App {
         let res_width_label = Label::new(Some("Width"));
         res_width.set_value(720.0);
 
+        // Camera
+        let aperture = SpinButton::new_with_range(0.0, 2.0, 0.1);
+        let aperture_label = Label::new(Some("Aperture"));
+        aperture.set_value(0.2);
+
+        let fov = SpinButton::new_with_range(10.0, 50.0, 1.0);
+        let fov_label = Label::new(Some("FOV"));
+        fov.set_value(35.0);
+
+
+
         // Logo
         let logo = Image::new();
         let loader = PixbufLoader::new_with_type("png").unwrap();
@@ -100,6 +111,14 @@ impl App {
         res_box.pack_start(&res_width_label, false, false, 3);
         res_box.pack_start(&res_width, true, true, 3);
 
+        let aperture_box = GtkBox::new(Orientation::Horizontal, 0);
+        aperture_box.pack_start(&aperture_label, false, false, 3);
+        aperture_box.pack_start(&aperture, true, true, 3);
+
+        let fov_box = GtkBox::new(Orientation::Horizontal, 0);
+        fov_box.pack_start(&fov_label, false, false, 3);
+        fov_box.pack_start(&fov, true, true, 3);
+
         let thread_box = GtkBox::new(Orientation::Horizontal, 0);
         thread_box.pack_start(&num_threads_label, false, false, 3);
         thread_box.pack_start(&num_threads, true, true, 3);
@@ -108,6 +127,8 @@ impl App {
         left_panel.pack_start(&thread_box, false, true, 3);
         left_panel.pack_start(&bucket_box, false, true, 3);
         left_panel.pack_start(&res_box, false, true, 3);
+        left_panel.pack_start(&fov_box, false, true, 3);
+        left_panel.pack_start(&aperture_box, false, true, 3);
         left_panel.pack_end(&render_btn, false, true, 3);
         left_panel.pack_end(&progress, false, true, 3);
         left_panel.pack_end(&logo, false, true, 3);
@@ -122,7 +143,12 @@ impl App {
         let thread_pool = RefCell::new(ThreadPool::new(num_cpus::get_physical()));
         let world = Arc::clone(&self.world);
         render_btn.connect_clicked(
-            clone!(@weak image_buf, @weak res_width, @strong thread_pool, @strong world => move |_| {
+            clone!(@weak image_buf,
+                     @weak res_width,
+                     @strong thread_pool,
+                     @strong world,
+                     @weak fov,
+                     @weak aperture => move |_| {
             let settings = SettingsBuilder::new()
                             .bucket(bucket_size.get_value() as u32)
                             .size(res_width.get_value() as u32, None)
@@ -132,12 +158,19 @@ impl App {
             image_buf.borrow_mut().resize(cap, 0);
             progress_clone.set_fraction(0.0);
             let buffer_ptr = Arc::new(AtomicPtr::new(image_buf.borrow_mut().as_mut_ptr()));
+            let lookfrom = Point3::new(3.0, 0.8, 0.0);
+            let lookat = Point3::new(0.0, 0.0, -1.0);
+            let foc_dist = (&lookfrom - &lookat).length();
+
             let camera = Arc::new(Camera::new(
-                Point3::new(0.0, 0.0, 2.0),
-                Point3::new(0.0, 0.0, -1.0),
+                lookfrom,
+                lookat,
                 Vec3::new(0.0, 1.0, 0.0),
-                40,
-                settings.width as f32 / settings.height as f32));
+                fov.get_value() as u32,
+                settings.width as f32 / settings.height as f32,
+                aperture.get_value() as f32,
+                foc_dist));
+
             thread_pool.borrow_mut().set_num_threads(num_threads.get_value() as usize);
             std::thread::spawn(
                 clone!(@strong s, @strong thread_pool, @strong world => move || {

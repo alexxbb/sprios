@@ -105,7 +105,7 @@ pub fn render<F>(
                                 let u = (x as f32 + rng.gen::<f32>()) / (settings.width - 1) as f32;
                                 let v =
                                     ((settings.height - y) as f32 + rng.gen::<f32>()) / (settings.height - 1) as f32;
-                                let ray = camera.get_ray(u, v);
+                                let ray = camera.get_ray(u, v, &mut rng);
                                 pixel_color += &ray_color(&ray, &world, MAX_DEPTH, &mut rng);
                             }
                             let idx = ((y * settings.width + x) * 3) as usize;
