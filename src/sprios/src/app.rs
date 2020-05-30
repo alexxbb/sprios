@@ -11,7 +11,7 @@ use gtk::{
 use gdk_pixbuf::PixbufLoaderExt;
 use glib::Bytes;
 use num_cpus;
-use renderer::{render, RenderStats, Camera, Vec3, Point3};
+use renderer::{render, RenderStats, SettingsBuilder, Camera, Vec3, Point3};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::AtomicPtr;
@@ -123,28 +123,26 @@ impl App {
         let world = Arc::clone(&self.world);
         render_btn.connect_clicked(
             clone!(@weak image_buf, @weak res_width, @strong thread_pool, @strong world => move |_| {
-            let image_width = res_width.get_value() as u32;
-            let image_height = (image_width as f32 / ASPECT_RATIO) as u32;
-            let cap = (image_height * image_width * 3) as usize;
+            let settings = SettingsBuilder::new()
+                            .bucket(bucket_size.get_value() as u32)
+                            .size(res_width.get_value() as u32, None)
+                            .samples(num_samples.get_value() as u32).build();
+
+            let cap = (settings.width * settings.height * 3) as usize;
             image_buf.borrow_mut().resize(cap, 0);
             progress_clone.set_fraction(0.0);
-            let samples = num_samples.get_value() as u32;
-            let bucket_size = bucket_size.get_value() as u32;
             let buffer_ptr = Arc::new(AtomicPtr::new(image_buf.borrow_mut().as_mut_ptr()));
             let camera = Arc::new(Camera::new(
                 Point3::new(0.0, 0.0, 2.0),
                 Point3::new(0.0, 0.0, -1.0),
                 Vec3::new(0.0, 1.0, 0.0),
                 40,
-                image_width as f32 / image_height as f32));
+                settings.width as f32 / settings.height as f32));
             thread_pool.borrow_mut().set_num_threads(num_threads.get_value() as usize);
             std::thread::spawn(
                 clone!(@strong s, @strong thread_pool, @strong world => move || {
                 let stats = render(
-                    image_width,
-                    image_height,
-                    samples,
-                    bucket_size,
+                    settings,
                     buffer_ptr,
                     Some(&thread_pool.borrow()),
                     world,

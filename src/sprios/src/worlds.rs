@@ -1,4 +1,4 @@
-use renderer::{render, Camera, Lambertian, Sphere, Vec3, Point3};
+use renderer::{Lambertian, Sphere, Vec3};
 pub use renderer::World;
 use rand;
 use rand::Rng;

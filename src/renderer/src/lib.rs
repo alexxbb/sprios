@@ -8,27 +8,28 @@ mod sphere;
 mod utils;
 mod vec;
 mod world;
+mod settings;
 
 use crate::buckets::BucketGrid;
 use crate::utils::Clip;
-use buckets::Bucket;
+use crate::buckets::Bucket;
 pub use camera::Camera;
 pub use imagebuffer::ImageBuffer;
 pub use material::*;
-use rand::{Rng, SeedableRng};
 pub use ray::Ray;
-use std::collections::VecDeque;
+pub use vec::{Color, Vec3, Point3};
+pub use world::World;
+pub use sphere::Sphere;
+pub use settings::{RenderSettings, SettingsBuilder};
 
 
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, Mutex};
-
+use rand::{Rng, SeedableRng};
 use std::time::{Instant};
 use threadpool::ThreadPool;
-pub use vec::{Color, Vec3, Point3};
-pub use world::World;
-pub use sphere::Sphere;
 use std::borrow::Cow;
+use std::collections::VecDeque;
 
 // type Buffer = Arc<Mutex<ImageBuffer>>;
 
@@ -58,10 +59,7 @@ fn ray_color(ray: &Ray, world: &World, depth: u32, rng: &mut rand::rngs::SmallRn
 
 
 pub fn render<F>(
-    width: u32,
-    height: u32,
-    samples: u32,
-    bucket: u32,
+    settings: RenderSettings,
     image_ptr: Arc<AtomicPtr<u8>>,
     pool: Option<&threadpool::ThreadPool>,
     world: Arc<World>,
@@ -72,11 +70,11 @@ pub fn render<F>(
         F: Fn(u32) + Send + Sync + 'static,
 {
     const MAX_DEPTH: u32 = 10;
-    let buckets = BucketGrid::new(width, height, bucket);
+    let buckets = BucketGrid::new(settings.width, settings.height, settings.bucket);
     let mut broker: VecDeque<Bucket> = std::collections::VecDeque::new();
     broker.extend(buckets);
     let total_buckets = broker.len() as u32;
-    let samples = samples.pow(2);
+    let samples = settings.samples.pow(2);
     let samples_scale = 1.0 / samples as f32;
     let broker = Arc::new(Mutex::new(broker));
     let progress = Arc::new(progress);
@@ -104,13 +102,13 @@ pub fn render<F>(
                         for (y, x) in bucket.pixels() {
                             let mut pixel_color = Color::ZERO;
                             for _ in 0..samples {
-                                let u = (x as f32 + rng.gen::<f32>()) / (width - 1) as f32;
+                                let u = (x as f32 + rng.gen::<f32>()) / (settings.width - 1) as f32;
                                 let v =
-                                    ((height - y) as f32 + rng.gen::<f32>()) / (height - 1) as f32;
+                                    ((settings.height - y) as f32 + rng.gen::<f32>()) / (settings.height - 1) as f32;
                                 let ray = camera.get_ray(u, v);
                                 pixel_color += &ray_color(&ray, &world, MAX_DEPTH, &mut rng);
                             }
-                            let idx = ((y * width + x) * 3) as usize;
+                            let idx = ((y * settings.width + x) * 3) as usize;
                             let r = (pixel_color.x * samples_scale).sqrt();
                             let g = (pixel_color.y * samples_scale).sqrt();
                             let b = (pixel_color.z * samples_scale).sqrt();
@@ -130,7 +128,7 @@ pub fn render<F>(
     pool.join();
     let render_time = timer.elapsed().as_secs_f64();
     let fps = 1.0 / render_time;
-    let mrays = ((width as u128 * height as u128 * samples as u128) as f64 * fps) / 1.0e6;
+    let mrays = ((settings.width as u128 * settings.height as u128 * settings.samples as u128) as f64 * fps) / 1.0e6;
     RenderStats {
         render_time,
         mrays,
@@ -143,6 +141,7 @@ mod tests {
     use crate::{render, Arc};
     use super::*;
     use std::sync::atomic::AtomicPtr;
+    pub use settings::*;
 
     #[test]
     fn test_render() {
@@ -164,7 +163,8 @@ mod tests {
             Vec3::new(0.0, 1.0, 0.0),
             40,
             300 as f32 / 200 as f32));
-        render(300, 200, 1, 10, img_ptr, None, world, camera, |_| {});
+        let set = SettingsBuilder::new().samples(1).size(300, None).build();
+        render(set,  img_ptr, None, world, camera, |_| {});
         assert_eq!(buf.len(), 300 * 200 * 3);
     }
 }

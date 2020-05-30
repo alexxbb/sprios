@@ -2,7 +2,7 @@ mod worlds;
 
 use worlds::*;
 
-use renderer::{render, Camera, World, Lambertian, Sphere, Vec3, Point3};
+use renderer::{render, Camera, World, Lambertian, Sphere, Vec3, Point3, RenderSettings, SettingsBuilder};
 
 #[cfg(not(feature = "command"))]
 mod app;
@@ -49,7 +49,7 @@ fn cmd() {
         None => 720
     };
     let image_height: u32 = (image_width as f32 / aspect_ratio) as u32;
-    let samples_per_pixel: u32 = match args.opt_str("s") {
+    let samples: u32 = match args.opt_str("s") {
         Some(s) => { s.parse().unwrap() }
         None => 10
     };
@@ -63,9 +63,10 @@ fn cmd() {
     };
 
     let pool = threadpool::ThreadPool::new(num_threads);
+    let rs = SettingsBuilder::new().size(image_width, None).bucket(bucket).samples(samples).build();
 
     let mut img_buf: Vec<u8> = Vec::new();
-    img_buf.resize((image_width * image_height * 3) as usize, 0);
+    img_buf.resize((rs.width * rs.height * 3) as usize, 0);
     let img_ptr = Arc::new(AtomicPtr::new(img_buf.as_mut_ptr()));
 
     let camera = Arc::new(Camera::new(
@@ -73,14 +74,11 @@ fn cmd() {
         Point3::new(0.0, 0.0, -1.0),
         Vec3::new(0.0, 1.0, 0.0),
         40,
-        image_width as f32 / image_height as f32));
+        rs.width as f32 / rs.height as f32));
     // let world = Arc::new(world_book());
     let world = Arc::new(world_ivan(&Vec3::new(-0.5, -0.5, -0.5), 0.5, 3, 5));
     let stat = render(
-        image_width,
-        image_height,
-        samples_per_pixel,
-        bucket,
+        rs,
         img_ptr,
         Some(&pool),
         world,
