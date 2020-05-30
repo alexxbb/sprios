@@ -13,6 +13,7 @@ pub struct Lambertian {
 
 pub struct Metal {
     pub color: Color,
+    pub fuzz: f32,
 }
 
 impl Material for Lambertian {
@@ -35,9 +36,17 @@ impl Material for Lambertian {
 }
 
 impl Material for Metal {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord, _rng: Option<&mut dyn rand::RngCore>) -> Option<Ray> {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord, rng: Option<&mut dyn rand::RngCore>) -> Option<Ray> {
         let reflected = r_in.direction.unit().reflect(&rec.normal);
-        let scattered = Ray::new(&rec.p, &reflected);
+        let mut trng: rand::rngs::ThreadRng;
+        let mut rng = match rng {
+            Some(r) => r,
+            None => {
+                trng = rand::thread_rng();
+                &mut trng
+            }
+        };
+        let scattered = Ray::new(&rec.p, &(reflected + Vec3::random_in_unit_sphere(&mut rng) * self.fuzz));
         if scattered.direction.dot(&rec.normal) > 0.0 {
             return Some(scattered);
         }

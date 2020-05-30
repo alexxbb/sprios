@@ -72,12 +72,11 @@ impl Vec3 {
     pub fn reflect(&self, other: &Vec3) -> Vec3 {
         self - other * 2.0 * self.dot(other)
     }
-    pub fn random() -> Self {
-        Self::random_in(0.0, 1.0)
+    pub fn random(rng: &mut impl rand::RngCore) -> Self {
+        Self::random_in(0.0, 1.0, rng)
     }
 
-    pub fn random_in(min: f32, max: f32) -> Self {
-        let mut rng = rand::thread_rng();
+    pub fn random_in(min: f32, max: f32, rng: &mut impl rand::RngCore) -> Self {
         Vec3 {
             x: rng.gen_range(min, max),
             y: rng.gen_range(min, max),
@@ -85,9 +84,9 @@ impl Vec3 {
         }
     }
 
-    pub fn random_in_unit_sphere() -> Self {
+    pub fn random_in_unit_sphere(rng: &mut impl rand::RngCore) -> Self {
         loop {
-            let p = Self::random();
+            let p = Self::random(rng);
             if p.length_squared() >= 1.0 {
                 continue;
             }
@@ -95,8 +94,8 @@ impl Vec3 {
         }
     }
 
-    pub fn random_in_hemisphere(normal: &Vec3) -> Self {
-        let in_unit_sphere = Vec3::random_in_unit_sphere();
+    pub fn random_in_hemisphere(normal: &Vec3, rng: &mut impl rand::RngCore) -> Self {
+        let in_unit_sphere = Vec3::random_in_unit_sphere(rng);
         if Vec3::dot(&in_unit_sphere, normal) > 0.0 {
             return in_unit_sphere;
         }

@@ -29,7 +29,6 @@ pub enum Event {
 
 pub struct App {
     pub window: ApplicationWindow,
-    world: Arc<World>,
 }
 
 impl App {
@@ -38,8 +37,7 @@ impl App {
         window.set_title("SPRIOS");
         window.set_default_size(920, 470);
         gtk::Window::set_default_icon_name("face-smirk");
-        let world = world_book();
-        Rc::new(App { window, world: Arc::new(world) })
+        Rc::new(App { window} )
     }
 
     pub fn build_ui(&self) {
@@ -69,11 +67,11 @@ impl App {
         // Camera
         let aperture = SpinButton::new_with_range(0.0, 2.0, 0.1);
         let aperture_label = Label::new(Some("Aperture"));
-        aperture.set_value(0.2);
+        aperture.set_value(0.1);
 
         let fov = SpinButton::new_with_range(10.0, 50.0, 1.0);
         let fov_label = Label::new(Some("FOV"));
-        fov.set_value(35.0);
+        fov.set_value(20.0);
 
 
 
@@ -141,12 +139,10 @@ impl App {
         let progress_clone = progress.clone();
         let image_buf = Rc::new(RefCell::new(image_buffer));
         let thread_pool = RefCell::new(ThreadPool::new(num_cpus::get_physical()));
-        let world = Arc::clone(&self.world);
         render_btn.connect_clicked(
             clone!(@weak image_buf,
                      @weak res_width,
                      @strong thread_pool,
-                     @strong world,
                      @weak fov,
                      @weak aperture => move |_| {
             let settings = SettingsBuilder::new()
@@ -158,10 +154,11 @@ impl App {
             image_buf.borrow_mut().resize(cap, 0);
             progress_clone.set_fraction(0.0);
             let buffer_ptr = Arc::new(AtomicPtr::new(image_buf.borrow_mut().as_mut_ptr()));
-            let lookfrom = Point3::new(3.0, 0.8, 0.0);
-            let lookat = Point3::new(0.0, 0.0, -1.0);
+            let lookfrom = Point3::new(13.0, 2.0, 3.0);
+            let lookat = Point3::new(0.0, 0.0, 0.0);
             let foc_dist = (&lookfrom - &lookat).length();
-
+            let foc_dist = 10.0;
+            let world = Arc::new(final_world());
             let camera = Arc::new(Camera::new(
                 lookfrom,
                 lookat,
