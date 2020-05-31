@@ -7,6 +7,7 @@ mod ray;
 mod sphere;
 mod utils;
 mod vec;
+mod bvh;
 mod world;
 mod settings;
 
@@ -46,6 +47,7 @@ fn ray_color(ray: &Ray, world: &World, depth: u32, rng: &mut rand::rngs::SmallRn
         return Color::ZERO;
     }
 
+    use crate::hittable::Hittable;
     if let Some(rec) = world.hit(ray, 0.001, f32::INFINITY) {
         if let Some(ray) = rec.mat.scatter(ray, &rec, Some(rng)) {
             return rec.mat.color() * ray_color(&ray, world, depth - 1, rng);
@@ -162,7 +164,8 @@ mod tests {
             Point3::new(0.0, 0.0, -1.0),
             Vec3::new(0.0, 1.0, 0.0),
             40,
-            300 as f32 / 200 as f32));
+            300 as f32 / 200 as f32,
+        0.0, f32::INFINITY));
         let set = SettingsBuilder::new().samples(1).size(300, None).build();
         render(set,  img_ptr, None, world, camera, |_| {});
         assert_eq!(buf.len(), 300 * 200 * 3);

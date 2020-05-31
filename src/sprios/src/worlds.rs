@@ -69,7 +69,7 @@ pub fn world_book() -> World {
 }
 
 pub fn final_world() -> World {
-    use rand::seq::{SliceRandom, IteratorRandom};
+    use rand::seq::{SliceRandom};
     enum Mats {
         Lambert,
         Metal,

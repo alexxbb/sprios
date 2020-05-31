@@ -2,6 +2,7 @@ use crate::hittable::{HitRecord, Hittable};
 use crate::material::Material;
 use crate::ray::Ray;
 use crate::vec::*;
+use crate::bvh::AaBb;
 
 pub struct Sphere {
     pub center: Point3,
@@ -49,5 +50,10 @@ impl Hittable for Sphere {
             }
         }
         None
+    }
+
+    fn bbox(&self, _t0: f32, _t1: f32) -> Option<AaBb> {
+        let rad = Vec3::new(self.radius, self.radius, self.radius);
+        Some(AaBb::new(self.center - &rad, self.center + &rad))
     }
 }

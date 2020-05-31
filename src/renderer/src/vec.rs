@@ -1,6 +1,6 @@
 use rand;
 use rand::Rng;
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, Index};
 
 pub type Point3 = Vec3;
 pub type Color = Vec3;
@@ -28,6 +28,19 @@ impl From<&[f32; 3]> for Vec3 {
             x: a[0],
             y: a[1],
             z: a[2],
+        }
+    }
+}
+
+impl Index<usize> for Vec3 {
+    type Output = f32;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        match index {
+            0 => &self.x,
+            1 => &self.y,
+            2 => &self.z,
+            _ => panic!("Vec3 out of bounds!")
         }
     }
 }
