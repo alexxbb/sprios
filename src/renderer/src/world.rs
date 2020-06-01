@@ -1,7 +1,7 @@
 use crate::hittable::{HitRecord, Hittable};
 use crate::{Ray, Point3};
 use std::sync::Arc;
-use crate::bvh::AaBb;
+use crate::bbox::AaBb;
 
 trait Foo: Send + Sync {}
 

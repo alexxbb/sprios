@@ -1,7 +1,7 @@
 use crate::material::Material;
 use crate::ray::Ray;
 use crate::vec::{Point3, Vec3};
-use crate::bvh::AaBb;
+use crate::bbox::AaBb;
 
 #[derive(Clone)]
 pub struct HitRecord<'obj> {

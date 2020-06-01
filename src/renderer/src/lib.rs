@@ -7,8 +7,9 @@ mod ray;
 mod sphere;
 mod utils;
 mod vec;
-mod bvh;
+mod bbox;
 mod world;
+mod bvh;
 mod settings;
 
 use crate::buckets::BucketGrid;

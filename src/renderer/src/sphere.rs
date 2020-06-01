@@ -2,7 +2,7 @@ use crate::hittable::{HitRecord, Hittable};
 use crate::material::Material;
 use crate::ray::Ray;
 use crate::vec::*;
-use crate::bvh::AaBb;
+use crate::bbox::AaBb;
 
 pub struct Sphere {
     pub center: Point3,

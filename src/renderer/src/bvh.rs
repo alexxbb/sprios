@@ -1,62 +1,27 @@
-use crate::vec::{Vec3, Point3};
-use crate::ray::Ray;
+use crate::hittable::{Hittable, HitRecord};
+use crate::Ray;
+use crate::bbox::AaBb;
+use std::rc::Rc;
 
-#[derive(Debug)]
-pub struct AaBb {
-    pub min: Point3,
-    pub max: Point3,
+
+pub struct BVH {
+    pub left: Rc<dyn Hittable>,
+    pub right: Rc<dyn Hittable>,
 }
 
+impl BVH {
+    pub fn new() -> BVH {
+        unimplemented!()
 
-impl AaBb {
-    pub fn new(min: Point3, max: Point3) -> Self {
-        AaBb { min, max }
-    }
-
-    pub fn hit(&self, ray: &Ray, tmin: f32, tmax: f32) -> bool {
-        for a in 0..3 {
-            let invd = 1.0 / ray.direction[a];
-            let mut t0 = (self.min[a] - ray.origin[a]) * invd;
-            let mut t1 = (self.max[a] - ray.origin[a]) * invd;
-            if invd < 0.0f32 {
-                std::mem::swap(&mut t0, &mut t1);
-            }
-            let tmin = if t0 > tmin { t0 } else { tmin };
-            let tmax = if t1 > tmax { t1 } else { tmax };
-            if tmax <= tmin {
-                return false;
-            }
-        }
-        true
-    }
-
-    pub fn surrounding_box(box0: &AaBb, box1: &AaBb) -> AaBb {
-        let small = Point3::new(f32::min(box0.min.x, box1.min.x),
-                                f32::min(box0.min.y, box1.min.y),
-                                f32::min(box0.min.z, box1.min.z));
-
-        let big = Point3::new(f32::max(box0.max.x, box1.max.x),
-                              f32::max(box0.max.y, box1.max.y),
-                              f32::max(box0.max.z, box1.max.z));
-        AaBb::new(small, big)
     }
 }
 
-
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_hit() {
-        let min = Point3::new(3.0, 2.0, 0.0);
-        let max = Point3::new(5.0, 4.0, 0.0);
-        let aabb = AaBb::new(min, max);
-        let mut ray = Ray::new(&Point3::new(1.0, 1.0, 0.0), &Vec3::new(2.0, 2.0, 0.0));
-        assert!(aabb.hit(&ray, 0.0001, f32::INFINITY));
-        let mut ray = Ray::new(&Point3::new(1.0, 1.0, 0.0), &Vec3::new(2.0, 1.0, 0.0));
-        assert!(!aabb.hit(&ray, 0.0001, f32::INFINITY));
-    }
-}
+// impl Hittable for BVH {
+//     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord<'_>> {
+//         unimplemented!()
+//     }
+//
+//     fn bbox(&self, t0: f32, t1: f32) -> Option<AaBb> {
+//         unimplemented!()
+//     }
+// }
