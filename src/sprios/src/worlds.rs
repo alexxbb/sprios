@@ -86,12 +86,12 @@ pub fn final_world() -> World {
     for a in -11..11 {
         for b in -11..11 {
             let center = Vec3::new(a as f32 + 0.9 * rng.gen::<f32>(), 0.2, b as f32 + 0.9f32 * rng.gen::<f32>());
-            if (center - Vec3::new(4.0, 0.2, 0.0)).length() > 0.9 {
+            if (&center - Vec3::new(4.0, 0.2, 0.0)).length() > 0.9 {
                 let mat = match [Mats::Lambert, Mats::Metal].choose(&mut rng).unwrap() {
                     Mats::Lambert => Box::new(Lambertian { color: Color::random(&mut rng) }) as Box<dyn Material>,
                     Mats::Metal => Box::new(Metal { color: Color::random_in(0.5, 1.0, &mut rng), fuzz: rng.gen_range(0.0, 0.5) }) as Box<dyn Material>,
                 };
-                world.add(Sphere { center, radius: 0.2, material: mat });
+                world.add(Sphere { center: center.clone(), radius: 0.2, material: mat });
             }
         }
     }

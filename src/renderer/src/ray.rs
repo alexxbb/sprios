@@ -8,8 +8,8 @@ pub struct Ray {
 impl Ray {
     pub fn new(origin: &Point3, direction: &Vec3) -> Self {
         Ray {
-            origin: *origin,
-            direction: *direction,
+            origin: origin.clone(),
+            direction: direction.clone(),
         }
     }
     // pub fn zero() -> Self {
@@ -17,6 +17,6 @@ impl Ray {
     // }
 
     pub fn at(&self, t: f32) -> Point3 {
-        self.origin + self.direction * t
+        &self.origin + &self.direction * t
     }
 }

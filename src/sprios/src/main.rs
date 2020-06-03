@@ -74,6 +74,8 @@ fn cmd() {
         Point3::new(0.0, 0.0, -1.0),
         Vec3::new(0.0, 1.0, 0.0),
         40,
+        16.0/9.0,
+        2.0,
         rs.width as f32 / rs.height as f32));
     // let world = Arc::new(world_book());
     let world = Arc::new(world_ivan(&Vec3::new(-0.5, -0.5, -0.5), 0.5, 3, 5));

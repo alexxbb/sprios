@@ -5,7 +5,7 @@ use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, Index};
 pub type Point3 = Vec3;
 pub type Color = Vec3;
 
-#[derive(Debug, Copy, Clone, PartialOrd, PartialEq, Default)]
+#[derive(Debug, Clone, PartialOrd, PartialEq, Default)]
 pub struct Vec3 {
     pub x: f32,
     pub y: f32,
@@ -141,7 +141,7 @@ macro_rules! impl_ops {
             }
         }
 
-        // &Vec3 and &ec3
+        // &Vec3 and &Vec3
         impl $trait<$vec_type> for $vec_type {
             type Output = $vec_type;
             fn $op_fn(self, other: $vec_type) -> Self::Output {
