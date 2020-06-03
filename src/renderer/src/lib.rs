@@ -24,6 +24,7 @@ pub use vec::{Color, Vec3, Point3};
 pub use world::World;
 pub use sphere::Sphere;
 pub use settings::{RenderSettings, SettingsBuilder};
+pub use sampler::{PureRandom, create_sampler, Distribution};
 
 
 use std::sync::atomic::{AtomicPtr, Ordering};
@@ -78,9 +79,8 @@ pub fn render<F>(
     let mut broker: VecDeque<Bucket> = std::collections::VecDeque::new();
     broker.extend(buckets);
     let total_buckets = broker.len() as u32;
-    let samples = settings.samples.pow(2);
-    let samples = settings.samples;
-    let samples_scale = 1.0 / samples as f32;
+    let num_samples = settings.samples.pow(2) as usize;
+    let samples_scale = 1.0 / num_samples as f32;
     let broker = Arc::new(Mutex::new(broker));
     let progress = Arc::new(progress);
     let timer = Instant::now();
@@ -104,19 +104,17 @@ pub fn render<F>(
                             ((1.0 - buckets_left as f32 / total_buckets as f32) * 100.0) as u32,
                         );
                         let ptr = image_ptr.load(Ordering::Relaxed);
+                        let sampler = create_sampler(num_samples, Distribution::Random);
+                        let mut samples_iter = sampler.samples();
                         for (y, x) in bucket.pixels() {
                             let mut pixel_color = Color::ZERO;
-                            for sx in 0..samples {
-                                for sy in 0..samples {
-                                    let su = (sx as f32 + rng.gen::<f32>()) / (samples - 1) as f32;
-                                    let sv = (sy as f32 + rng.gen::<f32>()) / (samples - 1) as f32;
-                                    let u = (x as f32 + su) / (settings.width - 1) as f32;
-                                    let v = ((settings.height - y) as f32 + sv) / (settings.height - 1) as f32;
-                                    let ray = camera.get_ray(u, v, &mut rng);
-                                    pixel_color += &ray_color(&ray, &world, MAX_DEPTH, &mut rng);
-                                }
+                            for _ in 0..num_samples {
+                                let s = samples_iter.next().unwrap();
+                                let u = (x as f32 + s.x) / (settings.width - 1) as f32;
+                                let v = ((settings.height - y) as f32 + s.y) / (settings.height - 1) as f32;
+                                let ray = camera.get_ray(u, v, &mut rng);
+                                pixel_color += &ray_color(&ray, &world, MAX_DEPTH, &mut rng);
                             }
-                            pixel_color /= samples as f32;
                             let idx = ((y * settings.width + x) * 3) as usize;
                             let r = (pixel_color.x * samples_scale).sqrt();
                             let g = (pixel_color.y * samples_scale).sqrt();
