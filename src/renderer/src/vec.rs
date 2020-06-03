@@ -239,3 +239,11 @@ impl<'a> DivAssign<&'a Vec3> for Vec3 {
         self.z /= other.z;
     }
 }
+
+impl<'a> DivAssign<f32> for Vec3 {
+    fn div_assign(&mut self, other: f32) {
+        self.x /= other;
+        self.y /= other;
+        self.z /= other;
+    }
+}

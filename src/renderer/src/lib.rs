@@ -78,6 +78,7 @@ pub fn render<F>(
     broker.extend(buckets);
     let total_buckets = broker.len() as u32;
     let samples = settings.samples.pow(2);
+    let samples = settings.samples;
     let samples_scale = 1.0 / samples as f32;
     let broker = Arc::new(Mutex::new(broker));
     let progress = Arc::new(progress);
@@ -104,13 +105,17 @@ pub fn render<F>(
                         let ptr = image_ptr.load(Ordering::Relaxed);
                         for (y, x) in bucket.pixels() {
                             let mut pixel_color = Color::ZERO;
-                            for _ in 0..samples {
-                                let u = (x as f32 + rng.gen::<f32>()) / (settings.width - 1) as f32;
-                                let v =
-                                    ((settings.height - y) as f32 + rng.gen::<f32>()) / (settings.height - 1) as f32;
-                                let ray = camera.get_ray(u, v, &mut rng);
-                                pixel_color += &ray_color(&ray, &world, MAX_DEPTH, &mut rng);
+                            for sx in 0..samples {
+                                for sy in 0..samples {
+                                    let su = (sx as f32 + rng.gen::<f32>()) / (samples - 1) as f32;
+                                    let sv = (sy as f32 + rng.gen::<f32>()) / (samples - 1) as f32;
+                                    let u = (x as f32 + su) / (settings.width - 1) as f32;
+                                    let v = ((settings.height - y) as f32 + sv) / (settings.height - 1) as f32;
+                                    let ray = camera.get_ray(u, v, &mut rng);
+                                    pixel_color += &ray_color(&ray, &world, MAX_DEPTH, &mut rng);
+                                }
                             }
+                            pixel_color /= samples as f32;
                             let idx = ((y * settings.width + x) * 3) as usize;
                             let r = (pixel_color.x * samples_scale).sqrt();
                             let g = (pixel_color.y * samples_scale).sqrt();
