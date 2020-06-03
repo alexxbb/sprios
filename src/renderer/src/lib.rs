@@ -11,6 +11,7 @@ mod bbox;
 mod world;
 mod bvh;
 mod settings;
+mod sampler;
 
 use crate::buckets::BucketGrid;
 use crate::utils::Clip;
