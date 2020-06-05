@@ -104,7 +104,7 @@ pub fn render<F>(
                             ((1.0 - buckets_left as f32 / total_buckets as f32) * 100.0) as u32,
                         );
                         let ptr = image_ptr.load(Ordering::Relaxed);
-                        let sampler = create_sampler(num_samples, Distribution::Random);
+                        let sampler = create_sampler(num_samples, settings.distribution);
                         let mut samples_iter = sampler.samples();
                         for (y, x) in bucket.pixels() {
                             let mut pixel_color = Color::ZERO;

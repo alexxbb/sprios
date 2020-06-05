@@ -1,9 +1,12 @@
+use crate::sampler::Distribution;
+
 #[derive(Copy, Clone)]
 pub struct RenderSettings {
     pub width: u32,
     pub height: u32,
     pub bucket: u32,
     pub samples: u32,
+    pub distribution: Distribution,
 }
 
 pub struct SettingsBuilder {
@@ -11,11 +14,18 @@ pub struct SettingsBuilder {
     height: u32,
     bucket: u32,
     samples: u32,
+    distribution: Distribution,
 }
 
 impl SettingsBuilder {
-    pub fn new()-> Self {
-        SettingsBuilder { width: 720, height: 480, bucket: 16, samples: 3 }
+    pub fn new() -> Self {
+        SettingsBuilder {
+            width: 720,
+            height: 480,
+            bucket: 16,
+            samples: 3,
+            distribution: Distribution::Random,
+        }
     }
 
     pub fn bucket(mut self, v: u32) -> Self {
@@ -33,7 +43,18 @@ impl SettingsBuilder {
         self.samples = v;
         self
     }
+
+    pub fn distribution(mut self, v: Distribution) -> Self {
+        self.distribution = v;
+        self
+    }
     pub fn build(self) -> RenderSettings {
-        RenderSettings{ width: self.width, height: self.height, bucket: self.bucket, samples: self.samples}
+        RenderSettings {
+            width: self.width,
+            height: self.height,
+            bucket: self.bucket,
+            samples: self.samples,
+            distribution: self.distribution,
+        }
     }
 }

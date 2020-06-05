@@ -29,6 +29,7 @@ impl SamplerData {
     }
 }
 
+#[derive(Copy, Clone)]
 pub enum Distribution {
     Random,
     Jittered,
@@ -94,8 +95,14 @@ impl Jittered {
     pub fn new(num_samples: usize, num_sets: usize) -> Jittered {
         let mut rng = rand::rngs::SmallRng::from_entropy();
         let mut data = SamplerData::new(num_samples, num_sets);
-        for _ in 0..(num_samples * num_sets) {
-            data.samples.push(Point3::random(&mut rng))
+        let n = (num_samples as f32).sqrt();
+        for _ in 0..num_sets {
+            for j in 0..n as usize {
+                for k in 0..n as usize {
+                    data.samples.push(
+                        Point3::new(((k as f32) + rng.gen::<f32>()) / n, ((j as f32) + rng.gen::<f32>()) / n, 0.0));
+                }
+            }
         }
         Jittered {
             data

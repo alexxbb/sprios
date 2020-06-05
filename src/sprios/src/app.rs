@@ -3,20 +3,17 @@ use gdk_pixbuf::{PixbufLoader};
 use gio::ApplicationExt;
 use glib::{clone};
 use glib::signal::Inhibit;
-use gtk::{
-    ApplicationWindow, Box as GtkBox, BoxExt, Button, ButtonExt, ContainerExt, GtkWindowExt, Image,
-    ImageExt, Label, LabelExt, Orientation, Paned, PanedExt, ProgressBar, ProgressBarExt,
-    SpinButton, SpinButtonExt, WidgetExt,
-};
+use gtk::{ApplicationWindow, Box as GtkBox, BoxExt, Button, ButtonExt, ContainerExt, GtkWindowExt, Image, ImageExt, Label, LabelExt, Orientation, Paned, PanedExt, ProgressBar, ProgressBarExt, SpinButton, SpinButtonExt, WidgetExt, ComboBoxText, ComboBoxTextExt};
 use gdk_pixbuf::PixbufLoaderExt;
 use glib::Bytes;
 use num_cpus;
-use renderer::{render, RenderStats, SettingsBuilder, Camera, Vec3, Point3};
+use renderer::{render, RenderStats, SettingsBuilder, Camera, Vec3, Point3, Distribution};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::AtomicPtr;
 use std::sync::{Arc};
 use threadpool::{ThreadPool};
+use gtk::prelude::ComboBoxExtManual;
 
 static LOGO: &[u8;33647] = &include_bytes!("../rust-logo.png");
 
@@ -48,6 +45,13 @@ impl App {
         num_samples.set_value(3.0);
         let samples_label = Label::new(Some("Samples"));
 
+        // Sampler
+        let sampler = ComboBoxText::new();
+        sampler.append_text("Random");
+        sampler.append_text("Jittered");
+        sampler.set_active(Some(0));
+        let sampler_label = Label::new(Some("Sampler"));
+
         // Bucket size
         let bucket_size = SpinButton::new_with_range(4.0, 100.0, 4.0);
         let bucket_label = Label::new(Some("Bucket"));
@@ -72,8 +76,6 @@ impl App {
         let fov = SpinButton::new_with_range(10.0, 50.0, 1.0);
         let fov_label = Label::new(Some("FOV"));
         fov.set_value(20.0);
-
-
 
         // Logo
         let logo = Image::new();
@@ -101,6 +103,10 @@ impl App {
         samples_box.pack_start(&samples_label, false, false, 3);
         samples_box.pack_start(&num_samples, true, true, 3);
 
+        let sampler_box = GtkBox::new(Orientation::Horizontal, 0);
+        sampler_box.pack_start(&sampler_label, false, false, 3);
+        sampler_box.pack_start(&sampler, true, true, 3);
+
         let bucket_box = GtkBox::new(Orientation::Horizontal, 0);
         bucket_box.pack_start(&bucket_label, false, false, 3);
         bucket_box.pack_start(&bucket_size, true, true, 3);
@@ -122,6 +128,7 @@ impl App {
         thread_box.pack_start(&num_threads, true, true, 3);
 
         left_panel.pack_start(&samples_box, false, true, 3);
+        left_panel.pack_start(&sampler_box, false, true, 3);
         left_panel.pack_start(&thread_box, false, true, 3);
         left_panel.pack_start(&bucket_box, false, true, 3);
         left_panel.pack_start(&res_box, false, true, 3);
@@ -139,16 +146,31 @@ impl App {
         let progress_clone = progress.clone();
         let image_buf = Rc::new(RefCell::new(image_buffer));
         let thread_pool = RefCell::new(ThreadPool::new(num_cpus::get_physical()));
+        let world = Arc::new(final_world());
         render_btn.connect_clicked(
             clone!(@weak image_buf,
                      @weak res_width,
+                     @weak sampler,
                      @strong thread_pool,
+                     @strong world,
                      @weak fov,
                      @weak aperture => move |_| {
+            let distrib = match sampler.get_active_text() {
+                Some(ref t) => {
+                    match t.as_ref() {
+                        "Random" => Distribution::Random,
+                        "Jittered" => Distribution::Jittered,
+                        _ => unreachable!()
+                    }
+                }
+                None => unreachable!()
+            };
             let settings = SettingsBuilder::new()
                             .bucket(bucket_size.get_value() as u32)
                             .size(res_width.get_value() as u32, None)
-                            .samples(num_samples.get_value() as u32).build();
+                            .samples(num_samples.get_value() as u32)
+                            .distribution(distrib)
+                            .build();
 
             let cap = (settings.width * settings.height * 3) as usize;
             image_buf.borrow_mut().resize(cap, 0);
@@ -158,7 +180,6 @@ impl App {
             let lookat = Point3::new(0.0, 0.0, 0.0);
             let foc_dist = (&lookfrom - &lookat).length();
             let foc_dist = 10.0;
-            let world = Arc::new(final_world());
             let camera = Arc::new(Camera::new(
                 lookfrom,
                 lookat,
