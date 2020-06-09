@@ -1,5 +1,5 @@
 use rand;
-use crate::vec::{Vec3, Point3};
+use crate::vec::{Point3};
 use rand::{SeedableRng, thread_rng, Rng};
 use rand::distributions::{Uniform};
 

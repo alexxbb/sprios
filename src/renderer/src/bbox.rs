@@ -1,4 +1,4 @@
-use crate::vec::{Vec3, Point3};
+use crate::vec::{Point3};
 use crate::ray::Ray;
 
 #[derive(Debug)]

@@ -1,5 +1,5 @@
 use crate::hittable::{HitRecord, Hittable};
-use crate::{Ray, Point3};
+use crate::{Ray};
 use std::sync::Arc;
 use crate::bbox::AaBb;
 
@@ -10,17 +10,19 @@ pub struct World {
 }
 
 impl Hittable for World {
-    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord<'_>> {
-        let mut temp_rec: Option<HitRecord> = None;
+    fn hit<'obj>(&'obj self, ray: &Ray, t_min: f32, t_max: f32, rec: &mut HitRecord<'obj>) -> bool {
+        let mut temp_rec = rec.clone();
+        let mut been_hit = false;
         let mut closest_so_far = t_max;
 
         for obj in &self.objects {
-            if let Some(hit) = obj.hit(ray, t_min, closest_so_far) {
-                closest_so_far = hit.t;
-                temp_rec = Some(hit);
+            if obj.hit(ray, t_min, closest_so_far, &mut temp_rec) {
+                been_hit = true;
+                closest_so_far = temp_rec.t;
+                *rec = temp_rec.clone();
             }
         }
-        temp_rec
+        been_hit
     }
 
     fn bbox(&self, t0: f32, t1: f32) -> Option<AaBb> {

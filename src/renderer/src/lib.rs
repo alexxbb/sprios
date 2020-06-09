@@ -29,11 +29,12 @@ pub use sampler::{PureRandom, create_sampler, Distribution};
 
 use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::{Arc, Mutex};
-use rand::{Rng, SeedableRng};
+use rand::{SeedableRng};
 use std::time::{Instant};
 use threadpool::ThreadPool;
 use std::borrow::Cow;
 use std::collections::VecDeque;
+use crate::hittable::HitRecord;
 
 // type Buffer = Arc<Mutex<ImageBuffer>>;
 
@@ -46,12 +47,13 @@ pub struct RenderStats {
 
 fn ray_color(ray: &Ray, world: &World, depth: u32, rng: &mut rand::rngs::SmallRng) -> Color {
     if depth == 0 {
-        // Max recursion depth reached
         return Color::ZERO;
     }
+    let tmp_mat = Lambertian{color: Color::ZERO};
+    let mut rec = HitRecord::new(&tmp_mat);
 
     use crate::hittable::Hittable;
-    if let Some(rec) = world.hit(ray, 0.001, f32::INFINITY) {
+    if world.hit(ray, 0.001, f32::INFINITY, &mut rec) {
         if let Some(ray) = rec.mat.scatter(ray, &rec, Some(rng)) {
             return rec.mat.color() * ray_color(&ray, world, depth - 1, rng);
         }

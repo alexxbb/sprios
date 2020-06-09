@@ -1,6 +1,4 @@
-use crate::hittable::{Hittable, HitRecord};
-use crate::Ray;
-use crate::bbox::AaBb;
+use crate::hittable::{Hittable};
 use std::rc::Rc;
 
 

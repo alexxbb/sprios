@@ -33,6 +33,6 @@ impl<'obj> HitRecord<'obj> {
 }
 
 pub trait Hittable: Send + Sync {
-    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord>;
+    fn hit<'obj>(&'obj self, ray: &Ray, t_min: f32, t_max: f32, rec: &mut HitRecord<'obj>) -> bool;
     fn bbox(&self, t0: f32, t1: f32) -> Option<AaBb>;
 }
