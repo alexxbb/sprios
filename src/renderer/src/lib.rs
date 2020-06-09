@@ -106,7 +106,11 @@ pub fn render<F>(
                             ((1.0 - buckets_left as f32 / total_buckets as f32) * 100.0) as u32,
                         );
                         let ptr = image_ptr.load(Ordering::Relaxed);
-                        let sampler = create_sampler(num_samples, settings.distribution);
+                        let mut rng = rand::rngs::SmallRng::from_entropy();
+                        let sampler = create_sampler(
+                            num_samples, settings.distribution, rng);
+                        // TODO: create_sampler shoud take mut ref to rng
+                        let mut rng = rand::rngs::SmallRng::from_entropy();
                         let mut samples_iter = sampler.samples();
                         for (y, x) in bucket.pixels() {
                             let mut pixel_color = Color::ZERO;
@@ -137,7 +141,7 @@ pub fn render<F>(
     pool.join();
     let render_time = timer.elapsed().as_secs_f64();
     let fps = 1.0 / render_time;
-    let mrays = ((settings.width as u128 * settings.height as u128 * settings.samples as u128) as f64 * fps) / 1.0e6;
+    let mrays = ((settings.width as u128 * settings.height as u128 * num_samples as u128) as f64 * fps) / 1.0e6;
     RenderStats {
         render_time,
         mrays,
