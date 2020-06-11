@@ -1,0 +1,17 @@
+[package]
+name = "benches"
+version = "0.1.0"
+authors = ["Aleksei Rusev <arusev@imageworks.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rand= {version = "0.7.3", features=["small_rng"]}
+
+[dev-dependencies]
+criterion = "*"
+
+[[bench]]
+name = "rand_benchmark"
+harness = false
