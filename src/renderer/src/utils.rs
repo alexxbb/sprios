@@ -7,6 +7,7 @@ pub trait Clip {
 impl Clip for f32 {
     type Output = f32;
 
+    #[inline]
     fn clip(self, min: Self::Output, max: Self::Output) -> Self::Output {
         debug_assert!(min <= max);
         let mut x = self;

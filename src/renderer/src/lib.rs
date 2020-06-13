@@ -34,6 +34,7 @@ use std::time::{Instant};
 use threadpool::ThreadPool;
 use std::borrow::Cow;
 use std::collections::VecDeque;
+use std::sync::atomic::AtomicU64;
 use crate::hittable::HitRecord;
 
 // type Buffer = Arc<Mutex<ImageBuffer>>;
@@ -43,7 +44,23 @@ pub struct RenderStats {
     pub render_time: f64,
     pub mrays: f64,
     pub fps: f64,
+    pub num_ray_shot: u64,
+    pub num_ray_hits: u64
 }
+
+pub struct RayStat {
+    pub num_ray_hits: AtomicU64,
+}
+impl RayStat {
+    #[inline]
+    pub fn add_hit(&self) {
+        self.num_ray_hits.fetch_add(1, Ordering::Relaxed);
+    }
+}
+
+#[allow(non_upper_case_globals)]
+static ray_stat: RayStat = RayStat{num_ray_hits: AtomicU64::new(0)};
+
 
 fn ray_color(ray: &Ray, world: &World, depth: u32, rng: &mut rand::rngs::SmallRng) -> Color {
     if depth == 0 {
@@ -54,6 +71,7 @@ fn ray_color(ray: &Ray, world: &World, depth: u32, rng: &mut rand::rngs::SmallRn
 
     use crate::hittable::Hittable;
     if world.hit(ray, 0.001, f32::INFINITY, &mut rec) {
+        ray_stat.add_hit();
         if let Some(ray) = rec.mat.scatter(ray, &rec, Some(rng)) {
             return rec.mat.color() * ray_color(&ray, world, depth - 1, rng);
         }
@@ -106,7 +124,7 @@ pub fn render<F>(
                             ((1.0 - buckets_left as f32 / total_buckets as f32) * 100.0) as u32,
                         );
                         let ptr = image_ptr.load(Ordering::Relaxed);
-                        let mut rng = rand::rngs::SmallRng::from_entropy();
+                        let rng = rand::rngs::SmallRng::from_entropy();
                         let sampler = create_sampler(
                             num_samples, settings.distribution, rng);
                         // TODO: create_sampler shoud take mut ref to rng
@@ -141,11 +159,14 @@ pub fn render<F>(
     pool.join();
     let render_time = timer.elapsed().as_secs_f64();
     let fps = 1.0 / render_time;
-    let mrays = ((settings.width as u128 * settings.height as u128 * num_samples as u128) as f64 * fps) / 1.0e6;
+    let num_ray_shot = settings.width as u128 * settings.height as u128 * num_samples as u128;
+    let mrays = (num_ray_shot as f64 * fps) / 1.0e6;
     RenderStats {
         render_time,
         mrays,
         fps,
+        num_ray_shot: num_ray_shot as u64,
+        num_ray_hits: ray_stat.num_ray_hits.load(Ordering::Relaxed)
     }
 }
 

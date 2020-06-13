@@ -202,6 +202,7 @@ impl App {
                         s.send(Event::Progress(prog)).unwrap();
                     }),
                 );
+                dbg!(&stats);
                 s.send(Event::RenderCompleted(stats)).unwrap();
             }));
         }));

@@ -52,7 +52,12 @@ impl World {
     pub fn new() -> World {
         World { objects: vec![] }
     }
-    // Why 'static is needed here??
+    /*
+        Why 'static is needed here??
+        Because for rustc, a concrete object (that implements Hittable) could as well potentially
+        contain references. But we're taking the ownership here and storing the object in Arc,
+        which requires the data to be 'static
+     */
     pub fn add(&mut self, object: impl Hittable + 'static) {
         self.objects.push(Arc::new(object))
     }
