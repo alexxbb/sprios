@@ -1,3 +1,4 @@
+use crate::utils;
 use crate::worlds::*;
 use gdk_pixbuf::{PixbufLoader};
 use gio::ApplicationExt;
@@ -141,10 +142,9 @@ impl App {
         split.add2(&right_panel);
 
         const ASPECT_RATIO: f32 = 16.0 / 9.0;
-        let image_buffer: Vec<u8> = Vec::new();
         let (s, r) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
         let progress_clone = progress.clone();
-        let image_buf = Rc::new(RefCell::new(image_buffer));
+        let image_buf = Rc::new(RefCell::new(Vec::<f32>::new()));
         let thread_pool = RefCell::new(ThreadPool::new(num_cpus::get_physical()));
         let world = Arc::new(final_world());
         render_btn.connect_clicked(
@@ -173,7 +173,8 @@ impl App {
                             .build();
 
             let cap = (settings.width * settings.height * 3) as usize;
-            image_buf.borrow_mut().resize(cap, 0);
+            image_buf.borrow_mut().resize(cap, 0.0);
+            image_buf.borrow_mut().iter_mut().map(|x| *x = 0.0).count();
             progress_clone.set_fraction(0.0);
             let buffer_ptr = Arc::new(AtomicPtr::new(image_buf.borrow_mut().as_mut_ptr()));
             let lookfrom = Point3::new(13.0, 2.0, 3.0);
@@ -213,7 +214,8 @@ impl App {
                     progress.set_fraction(frac);
                 }
                 Event::RenderCompleted(stat) => {
-                    let bytes = Bytes::from(&image_buf.borrow().as_ref());
+                    // Convert f32 buffer into u8 ppm
+                    let bytes = utils::convert_buffer(&image_buf.borrow(), 2);
                     let loader = PixbufLoader::new_with_type("pnm").unwrap();
                     let image_width = res_width.get_value() as u32;
                     let image_height = (image_width as f32 / ASPECT_RATIO) as u32;

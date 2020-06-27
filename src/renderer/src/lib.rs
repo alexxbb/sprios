@@ -17,7 +17,6 @@ use crate::buckets::BucketGrid;
 use crate::utils::Clip;
 use crate::buckets::Bucket;
 pub use camera::Camera;
-pub use imagebuffer::ImageBuffer;
 pub use material::*;
 pub use ray::Ray;
 pub use vec::{Color, Vec3, Point3};
@@ -37,7 +36,6 @@ use std::collections::VecDeque;
 use std::sync::atomic::AtomicU64;
 use crate::hittable::HitRecord;
 
-// type Buffer = Arc<Mutex<ImageBuffer>>;
 
 #[derive(Copy, Clone, Debug)]
 pub struct RenderStats {
@@ -45,12 +43,13 @@ pub struct RenderStats {
     pub mrays: f64,
     pub fps: f64,
     pub num_ray_shot: u64,
-    pub num_ray_hits: u64
+    pub num_ray_hits: u64,
 }
 
 pub struct RayStat {
     pub num_ray_hits: AtomicU64,
 }
+
 impl RayStat {
     #[inline]
     pub fn add_hit(&self) {
@@ -59,14 +58,14 @@ impl RayStat {
 }
 
 #[allow(non_upper_case_globals)]
-static ray_stat: RayStat = RayStat{num_ray_hits: AtomicU64::new(0)};
+static ray_stat: RayStat = RayStat { num_ray_hits: AtomicU64::new(0) };
 
 
 fn ray_color(ray: &Ray, world: &World, depth: u32, rng: &mut rand::rngs::SmallRng) -> Color {
     if depth == 0 {
         return Color::ZERO;
     }
-    let tmp_mat = Lambertian{color: Color::ZERO};
+    let tmp_mat = Lambertian { color: Color::ZERO };
     let mut rec = HitRecord::new(&tmp_mat);
 
     use crate::hittable::Hittable;
@@ -85,7 +84,7 @@ fn ray_color(ray: &Ray, world: &World, depth: u32, rng: &mut rand::rngs::SmallRn
 
 pub fn render<F>(
     settings: RenderSettings,
-    image_ptr: Arc<AtomicPtr<u8>>,
+    image_ptr: Arc<AtomicPtr<f32>>,
     pool: Option<&threadpool::ThreadPool>,
     world: Arc<World>,
     camera: Arc<Camera>,
@@ -105,58 +104,54 @@ pub fn render<F>(
     let progress = Arc::new(progress);
     let timer = Instant::now();
     let pool = pool.map_or_else(|| Cow::Owned(ThreadPool::new(10)), |v| Cow::Borrowed(v));
-    for _ in 0..pool.max_count() {
-        let broker = Arc::clone(&broker);
-        let image_ptr = Arc::clone(&image_ptr);
-        let world = Arc::clone(&world);
-        let camera = Arc::clone(&camera);
-        let progress = Arc::clone(&progress);
-        pool.execute(move || {
-            let mut rng = rand::rngs::SmallRng::from_entropy();
-            loop {
-                let mut broker = broker.lock().unwrap();
-                let bucket = broker.pop_front();
-                let buckets_left = broker.len() as u32;
-                drop(broker);
-                match bucket {
-                    Some(bucket) => {
-                        progress(
-                            ((1.0 - buckets_left as f32 / total_buckets as f32) * 100.0) as u32,
-                        );
-                        let ptr = image_ptr.load(Ordering::Relaxed);
-                        let rng = rand::rngs::SmallRng::from_entropy();
-                        let sampler = create_sampler(
-                            num_samples, settings.distribution, rng);
-                        // TODO: create_sampler shoud take mut ref to rng
-                        let mut rng = rand::rngs::SmallRng::from_entropy();
-                        let mut samples_iter = sampler.samples();
-                        for (y, x) in bucket.pixels() {
-                            let mut pixel_color = Color::ZERO;
-                            for _ in 0..num_samples {
-                                let s = samples_iter.next().unwrap();
-                                let u = (x as f32 + s.x) / (settings.width - 1) as f32;
-                                let v = ((settings.height - y) as f32 + s.y) / (settings.height - 1) as f32;
-                                let ray = camera.get_ray(u, v, &mut rng);
-                                pixel_color += &ray_color(&ray, &world, MAX_DEPTH, &mut rng);
-                            }
-                            let idx = ((y * settings.width + x) * 3) as usize;
-                            let r = (pixel_color.x * samples_scale).sqrt();
-                            let g = (pixel_color.y * samples_scale).sqrt();
-                            let b = (pixel_color.z * samples_scale).sqrt();
-
-                            unsafe {
-                                ptr.add(idx + 0).write((256.0 * r.clip(0.0, 0.999)) as u8);
-                                ptr.add(idx + 1).write((256.0 * g.clip(0.0, 0.999)) as u8);
-                                ptr.add(idx + 2).write((256.0 * b.clip(0.0, 0.999)) as u8);
-                            }
+    for s in 0..num_samples {
+        for _ in 0..pool.max_count() {
+            let broker = Arc::clone(&broker);
+            let image_ptr = Arc::clone(&image_ptr);
+            let world = Arc::clone(&world);
+            let camera = Arc::clone(&camera);
+            let progress = Arc::clone(&progress);
+            pool.execute(move || {
+                loop {
+                    let mut broker = broker.lock().unwrap();
+                    let bucket = broker.pop_front();
+                    let buckets_left = broker.len() as u32;
+                    drop(broker);
+                    if bucket.is_none() { break; }
+                    let bucket = bucket.unwrap();
+                    progress(((1.0 - buckets_left as f32 / total_buckets as f32) * 100.0) as u32);
+                    let ptr = image_ptr.load(Ordering::Relaxed);
+                    let rng = rand::rngs::SmallRng::from_entropy();
+                    let sampler = create_sampler(
+                        num_samples, settings.distribution, rng);
+                    let mut rng = rand::rngs::SmallRng::from_entropy();
+                    let mut samples_iter = sampler.samples();
+                    for (y, x) in bucket.pixels() {
+                        let s = samples_iter.next().unwrap();
+                        let u = (x as f32 + s.x) / (settings.width - 1) as f32;
+                        let v = ((settings.height - y) as f32 + s.y) / (settings.height - 1) as f32;
+                        let ray = camera.get_ray(u, v, &mut rng);
+                        let clr = ray_color(&ray, &world, MAX_DEPTH, &mut rng);
+                        let idx = ((y * settings.width + x) * 3) as usize;
+                        unsafe {
+                            let ptr = ptr.add(idx);
+                            ptr.write(ptr.read() + clr.x);
+                            let ptr = ptr.add(1);
+                            ptr.write(ptr.read() + clr.y);
+                            let ptr = ptr.add(1);
+                            ptr.write(ptr.read() + clr.z);
                         }
                     }
-                    None => break,
                 }
-            }
-        });
+            });
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        pool.join();
+        println!("sample {} done", s);
+        // TODO: Signal the GUI that one sample pass is completed.
     }
     pool.join();
+    println!("Here");
     let render_time = timer.elapsed().as_secs_f64();
     let fps = 1.0 / render_time;
     let num_ray_shot = settings.width as u128 * settings.height as u128 * num_samples as u128;
@@ -166,7 +161,7 @@ pub fn render<F>(
         mrays,
         fps,
         num_ray_shot: num_ray_shot as u64,
-        num_ray_hits: ray_stat.num_ray_hits.load(Ordering::Relaxed)
+        num_ray_hits: ray_stat.num_ray_hits.load(Ordering::Relaxed),
     }
 }
 
@@ -197,9 +192,9 @@ mod tests {
             Vec3::new(0.0, 1.0, 0.0),
             40,
             300 as f32 / 200 as f32,
-        0.0, f32::INFINITY));
+            0.0, f32::INFINITY));
         let set = SettingsBuilder::new().samples(1).size(300, None).build();
-        render(set,  img_ptr, None, world, camera, |_| {});
+        render(set, img_ptr, None, world, camera, |_| {});
         assert_eq!(buf.len(), 300 * 200 * 3);
     }
 }

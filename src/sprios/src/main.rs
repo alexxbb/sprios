@@ -1,5 +1,5 @@
 mod worlds;
-
+mod utils;
 use worlds::*;
 
 use renderer::{render, Camera, World, Lambertian, Sphere, Vec3, Point3, RenderSettings, SettingsBuilder};

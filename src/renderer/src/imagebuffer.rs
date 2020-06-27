@@ -3,6 +3,7 @@ use crate::vec::Color;
 use std::io::BufWriter;
 use std::io::Write;
 
+/*
 pub struct ImageBuffer {
     inner: Vec<u8>,
     width: u32,
@@ -69,3 +70,4 @@ impl ImageBuffer {
         buf.flush().unwrap();
     }
 }
+*/
