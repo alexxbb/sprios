@@ -83,8 +83,8 @@ pub fn final_world() -> World {
             color: (0.5, 0.5, 0.5).into(),
         }),
     ));
-    for a in -11..11 {
-        for b in -11..11 {
+    for a in -5..5 {
+        for b in -5..5 {
             let center = Vec3::new(a as f32 + 0.9 * rng.gen::<f32>(), 0.2, b as f32 + 0.9f32 * rng.gen::<f32>());
             if (&center - Vec3::new(4.0, 0.2, 0.0)).length() > 0.9 {
                 let mat = match [Mats::Lambert, Mats::Metal].choose(&mut rng).unwrap() {

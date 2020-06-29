@@ -43,20 +43,20 @@ impl App {
         let split = Paned::new(Orientation::Horizontal);
         // Samples
         let num_samples = SpinButton::new_with_range(1.0, 32.0, 1.0);
-        num_samples.set_value(3.0);
+        num_samples.set_value(5.0);
         let samples_label = Label::new(Some("Samples"));
 
         // Sampler
         let sampler = ComboBoxText::new();
-        sampler.append_text("Random");
         sampler.append_text("Jittered");
+        sampler.append_text("Random");
         sampler.set_active(Some(0));
         let sampler_label = Label::new(Some("Sampler"));
 
         // Bucket size
         let bucket_size = SpinButton::new_with_range(4.0, 100.0, 4.0);
         let bucket_label = Label::new(Some("Bucket"));
-        bucket_size.set_value(16.0);
+        bucket_size.set_value(32.0);
 
         // Number of threads
         let max_threads = num_cpus::get();

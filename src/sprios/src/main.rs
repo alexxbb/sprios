@@ -78,7 +78,7 @@ fn cmd() {
         2.0,
         rs.width as f32 / rs.height as f32));
     // let world = Arc::new(world_book());
-    let world = Arc::new(world_ivan(&Vec3::new(-0.5, -0.5, -0.5), 0.5, 3, 5));
+    let world = Arc::new(world_ivan(&Vec3::new(-0.5, -0.5, -0.5), 0.5, 2, 3));
     let stat = render(
         rs,
         img_ptr,
