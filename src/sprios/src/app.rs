@@ -8,7 +8,7 @@ use gtk::{ApplicationWindow, Box as GtkBox, BoxExt, Button, ButtonExt, Container
 use gdk_pixbuf::PixbufLoaderExt;
 use glib::Bytes;
 use num_cpus;
-use renderer::{render, RenderStats, SettingsBuilder, Camera, Vec3, Point3, Distribution};
+use renderer::{render, RenderStats, SettingsBuilder, Camera, Vec3, Point3, Distribution, SampleStat, RenderEvent};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::AtomicPtr;
@@ -21,7 +21,7 @@ static LOGO: &[u8;33647] = &include_bytes!("../rust-logo.png");
 #[derive(Copy, Clone)]
 pub enum Event {
     Progress(u32),
-    RenderCompleted(RenderStats),
+    RenderEvent(RenderEvent),
 }
 
 
@@ -142,7 +142,7 @@ impl App {
         split.add2(&right_panel);
 
         const ASPECT_RATIO: f32 = 16.0 / 9.0;
-        let (s, r) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
+        let (sx, rx) = glib::MainContext::channel(glib::PRIORITY_DEFAULT);
         let progress_clone = progress.clone();
         let image_buf = Rc::new(RefCell::new(Vec::<f32>::new()));
         let thread_pool = RefCell::new(ThreadPool::new(num_cpus::get_physical()));
@@ -176,6 +176,7 @@ impl App {
             image_buf.borrow_mut().resize(cap, 0.0);
             image_buf.borrow_mut().iter_mut().map(|x| *x = 0.0).count();
             progress_clone.set_fraction(0.0);
+            let event_sx = sx.clone();
             let buffer_ptr = Arc::new(AtomicPtr::new(image_buf.borrow_mut().as_mut_ptr()));
             let lookfrom = Point3::new(13.0, 2.0, 3.0);
             let lookat = Point3::new(0.0, 0.0, 0.0);
@@ -192,44 +193,47 @@ impl App {
 
             thread_pool.borrow_mut().set_num_threads(num_threads.get_value() as usize);
             std::thread::spawn(
-                clone!(@strong s, @strong thread_pool, @strong world => move || {
+                clone!(@strong sx, @strong thread_pool, @strong world, @strong event_sx => move || {
                 let stats = render(
                     settings,
                     buffer_ptr,
                     Some(&thread_pool.borrow()),
                     world,
                     camera,
-                    clone!(@strong s => move |prog| {
-                        s.send(Event::Progress(prog)).unwrap();
+                    clone!(@strong event_sx => move |event| {
+                        event_sx.send(Event::RenderEvent(event)).unwrap();
                     }),
                 );
                 dbg!(&stats);
-                s.send(Event::RenderCompleted(stats)).unwrap();
+                event_sx.send(Event::RenderEvent(RenderEvent::Completed(stats))).unwrap();
             }));
         }));
-        r.attach(None, clone!(@strong image_buf, @strong gtk_image => move |event| {
+        rx.attach(None, clone!(@strong image_buf, @strong gtk_image => move |event| {
             match event {
-                Event::Progress(val) => {
-                    let frac = val as f64 / 100 as f64;
-                    progress.set_fraction(frac);
+                Event::RenderEvent(rv) => {
+                    match rv {
+                        RenderEvent::Completed(stat) => {
+                        }
+                        RenderEvent::SampleDone(stat) => {
+                            println!("SampleDone: {:?}", stat.sample);
+                            let bytes = utils::convert_buffer(&image_buf.borrow(), stat.sample);
+                            let loader = PixbufLoader::new_with_type("pnm").unwrap();
+                            let image_width = res_width.get_value() as u32;
+                            let image_height = (image_width as f32 / ASPECT_RATIO) as u32;
+                            loader.write(format!("P6\n{} {}\n255\n", image_width, image_height).as_bytes()).unwrap();
+                            loader
+                                .write_bytes(&bytes)
+                                .expect("Could not write to buffer");
+                            loader.close().unwrap();
+                            gtk_image.set_from_pixbuf(loader.get_pixbuf().as_ref());
+                        }
+                        RenderEvent::Percent(num) => {
+                            let frac = num as f64 / 100 as f64;
+                            progress.set_fraction(frac);
+                        }
+                    }
                 }
-                Event::RenderCompleted(stat) => {
-                    // Convert f32 buffer into u8 ppm
-                    let bytes = utils::convert_buffer(&image_buf.borrow(), 2);
-                    let loader = PixbufLoader::new_with_type("pnm").unwrap();
-                    let image_width = res_width.get_value() as u32;
-                    let image_height = (image_width as f32 / ASPECT_RATIO) as u32;
-                    loader.write(format!("P6\n{} {}\n255\n", image_width, image_height).as_bytes()).unwrap();
-                    loader
-                        .write_bytes(&bytes)
-                        .expect("Could not write to buffer");
-                    loader.close().unwrap();
-                    gtk_image.set_from_pixbuf(loader.get_pixbuf().as_ref());
-                    stat_label.set_text(&format!(
-                        "Time: {:.4} sec | FPS: {:.4} | MRays/s: {:.2}",
-                        stat.render_time, stat.fps, stat.mrays
-                    ));
-                }
+                _ => {}
             }
             glib::Continue(true)
         }));
