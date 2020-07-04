@@ -3,10 +3,7 @@ use anyhow::Result;
 use gdk_pixbuf::{Pixbuf, PixbufLoader, PixbufLoaderExt};
 use gio::prelude::*;
 use gtk::prelude::WidgetExtManual;
-use gtk::{
-    AdjustmentExt, Application, ApplicationWindow, Button, ContainerExt, Image, ScrollableExt,
-    ScrolledWindow, ScrolledWindowExt, Viewport, WidgetExt,
-};
+use gtk::{AdjustmentExt, Application, ApplicationWindow, Button, ContainerExt, Image, ScrollableExt, ScrolledWindow, ScrolledWindowExt, Viewport, WidgetExt, ImageExt};
 use std::cell::Cell;
 use std::rc::Rc;
 
@@ -15,16 +12,19 @@ fn init(app: &Application) -> Result<()> {
     let window = ApplicationWindow::new(app);
     // let loader = PixbufLoader::new_with_type("jpeg")?;
     let scroll = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
+    let viewport = Viewport::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
+    scroll.set_kinetic_scrolling(true);
     scroll.set_hexpand(true);
     scroll.set_vexpand(true);
-    let viewport = Viewport::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
-    scroll.add(&viewport);
+    scroll.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
     scroll.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
     scroll.set_min_content_width(800);
     scroll.set_min_content_height(600);
+    scroll.add(&viewport);
     let buf = Pixbuf::new_from_file("/home/alex/Sandbox/rust/sprios/src/viewer/image.jpeg")?;
     let image = Image::new_from_pixbuf(Some(&buf));
     let mmb = Rc::new(Cell::new(Option::<(f64, f64)>::None));
+    let zoom = Rc::new(Cell::new(0f64));
     viewport.add(&image);
     viewport.add_events(
         gdk::EventMask::BUTTON_PRESS_MASK
@@ -63,9 +63,16 @@ fn init(app: &Application) -> Result<()> {
             glib::signal::Inhibit(false)
         }
     });
-    let vp = viewport.clone();
+    let _zoom = Rc::clone(&zoom);
     viewport.connect_scroll_event(move |w, e| {
         let (_, scroll) = e.get_scroll_deltas().unwrap();
+        let fac = 0.1 * scroll;
+        zoom.replace(zoom.get() + fac);
+        let z = (1.0 - zoom.get()).max(0.01);
+        let w = (buf.get_width() as f64 * z).ceil() as i32;
+        let h = (buf.get_height() as f64 * z).ceil() as i32;
+        let pb = buf.scale_simple(w, h, gdk_pixbuf::InterpType::Tiles);
+        image.set_from_pixbuf(pb.as_ref());
         glib::signal::Inhibit(true)
     });
     window.add(&scroll);
