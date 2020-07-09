@@ -1,5 +1,5 @@
 use crate::hittable::{HitRecord, Hittable};
-use crate::{Ray, Camera, Color};
+use crate::{Ray, Camera, Color, Material, Lambertian};
 use std::sync::Arc;
 use crate::bbox::AaBb;
 use std::path::Path;
@@ -81,6 +81,9 @@ impl World {
             } else if line.starts_with("background") {
                 world.background = line.splitn(2, " ").nth(1)
                     .ok_or("Missing background color")?.parse()?;
+            } else if let Ok(mat) = line.parse::<Lambertian>() {
+                dbg!(mat);
+
             } else {
                 eprintln!("Could not parse line: {}", line);
             }

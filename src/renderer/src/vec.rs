@@ -22,6 +22,7 @@ impl FromStr for Vec3 {
             .map(|s| s.trim().parse::<f32>()).collect();
         return match res {
             Ok(r) => {
+                // NOT Okay to unwrap if len != 3
                 Ok(Self::try_from(&r).unwrap())
             },
             Err(e) => Err(e)

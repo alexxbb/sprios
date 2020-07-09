@@ -1,14 +1,37 @@
 use crate::hittable::HitRecord;
 use crate::ray::Ray;
 use crate::vec::{Color, Vec3};
+use std::str::FromStr;
 
 pub trait Material: Sync + Send {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord, rng: Option<&mut dyn rand::RngCore>) -> Option<Ray>;
     fn color(&self) -> &Color;
 }
 
+// TODO: Move to error module
+pub enum MaterialError {
+    ParseError
+}
+
+#[derive(Debug)]
 pub struct Lambertian {
     pub color: Color,
+}
+
+impl FromStr for Lambertian {
+    type Err = MaterialError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut split = s.splitn(2, " ");
+        if split.next().ok_or(MaterialError::ParseError)? == "diffuse" {
+            Ok(Lambertian {
+                color: split.next().ok_or(MaterialError::ParseError)?
+                    .parse().map_err(|_| MaterialError::ParseError)?
+            })
+        } else {
+            Err(MaterialError::ParseError)
+        }
+    }
 }
 
 pub struct Metal {
