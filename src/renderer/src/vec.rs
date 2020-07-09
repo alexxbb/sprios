@@ -1,6 +1,8 @@
 use rand;
 use rand::Rng;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, Index};
+use std::str::FromStr;
+use std::convert::TryFrom;
 
 pub type Point3 = Vec3;
 pub type Color = Vec3;
@@ -10,6 +12,21 @@ pub struct Vec3 {
     pub x: f32,
     pub y: f32,
     pub z: f32,
+}
+
+impl FromStr for Vec3 {
+    type Err = std::num::ParseFloatError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let res: Result<Vec<f32>, _> = s.split(" ")
+            .map(|s| s.trim().parse::<f32>()).collect();
+        return match res {
+            Ok(r) => {
+                Ok(Self::try_from(&r).unwrap())
+            },
+            Err(e) => Err(e)
+        }
+    }
 }
 
 impl From<(f32, f32, f32)> for Vec3 {
@@ -29,6 +46,21 @@ impl From<&[f32; 3]> for Vec3 {
             y: a[1],
             z: a[2],
         }
+    }
+}
+
+impl TryFrom<&Vec<f32>> for Vec3 {
+    type Error = ();
+
+    fn try_from(value: &Vec<f32>) -> Result<Self, Self::Error> {
+        if value.len() != 3 {
+            return Err(());
+        }
+        Ok(Vec3 {
+            x: value[0],
+            y: value[1],
+            z: value[2],
+        })
     }
 }
 
