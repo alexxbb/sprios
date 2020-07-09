@@ -1,5 +1,5 @@
 use crate::hittable::{HitRecord, Hittable};
-use crate::{Ray, Camera};
+use crate::{Ray, Camera, Color};
 use std::sync::Arc;
 use crate::bbox::AaBb;
 use std::path::Path;
@@ -10,6 +10,7 @@ trait Foo: Send + Sync {}
 pub struct World {
     pub(crate) objects: Vec<Arc<dyn Hittable>>,
     pub(crate) camera: Camera,
+    pub(crate) background: Color,
 }
 
 impl Hittable for World {
@@ -53,7 +54,7 @@ impl Hittable for World {
 
 impl World {
     pub fn new() -> World {
-        World { objects: vec![], camera: Camera::default()}
+        World { objects: vec![], camera: Camera::default(), background: Color::new(0.5, 0.5, 0.5) }
     }
     /*
         Why 'static is needed here??
@@ -65,29 +66,26 @@ impl World {
         self.objects.push(Arc::new(object))
     }
 
-    pub fn from_file(path: impl AsRef<Path>) -> Result<World, String> {
-        match std::fs::File::open(path)
-        {
-            Err(e) => return Err(e.to_string()),
-            Ok(mut file) => {
-                let mut content= String::new();
-                file.read_to_string(&mut content);
+    pub fn from_file(path: impl AsRef<Path>) -> Result<World, Box<dyn std::error::Error>> {
+        let mut file = std::fs::File::open(path)?;
+        let mut content = String::new();
+        file.read_to_string(&mut content);
 
-                for line in content.lines() {
-                    if line.starts_with('#') || line.is_empty() {
-                        continue
-                    }
-                    if let Ok(cam) = line.parse::<Camera>() {
-                        dbg!(cam);
-                    }
-                    else {
-                        eprintln!("Could not parse line: {}", line);
-                    }
-                }
+        let mut world = World::new();
+        for line in content.lines() {
+            if line.starts_with('#') || line.is_empty() {
+                continue;
             }
-
+            if let Ok(cam) = line.parse::<Camera>() {
+                world.camera = cam;
+            } else if line.starts_with("background") {
+                world.background = line.splitn(2, " ").nth(1)
+                    .ok_or("Missing background color")?.parse()?;
+            } else {
+                eprintln!("Could not parse line: {}", line);
+            }
         }
-        Ok(World::new())
+        Ok(world)
     }
 }
 
