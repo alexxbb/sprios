@@ -81,8 +81,8 @@ impl World {
             } else if line.starts_with("background") {
                 world.background = line.splitn(2, " ").nth(1)
                     .ok_or("Missing background color")?.parse()?;
-            } else if let Ok(mat) = line.parse::<Lambertian>() {
-                dbg!(mat);
+            } else if let Ok(mat) = line.parse::<Box<dyn Material>>() {
+                dbg!(mat.color());
 
             } else {
                 eprintln!("Could not parse line: {}", line);

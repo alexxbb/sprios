@@ -8,9 +8,41 @@ pub trait Material: Sync + Send {
     fn color(&self) -> &Color;
 }
 
-// TODO: Move to error module
 pub enum MaterialError {
     ParseError
+}
+
+impl FromStr for Box<dyn Material> {
+    type Err = MaterialError;
+
+    fn from_str(s: &str) -> Result<Box<dyn Material>, Self::Err> {
+        let mut split = s.splitn(2, " ");
+        match split.next().ok_or(MaterialError::ParseError)?
+        {
+            "diffuse" => {
+                Ok(Box::new(Lambertian {
+                    color: split.next().ok_or(MaterialError::ParseError)?
+                        .parse().map_err(|_| MaterialError::ParseError)?
+                }))
+            }
+            "metal" => {
+                let parms = split.next().ok_or(MaterialError::ParseError)?
+                    .split(" ")
+                    .map(|v| v.parse::<f32>())
+                    .collect::<Result<Vec<_>, _>>().map_err(|_| MaterialError::ParseError)?;
+                if parms.len() < 4 {
+                    return Err(MaterialError::ParseError);
+                }
+                Ok(Box::new(Metal {
+                    color: Color::from((parms[0], parms[1], parms[2])),
+                    fuzz: parms[3],
+                }))
+            }
+            _ => {
+                Err(MaterialError::ParseError)
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -18,21 +50,6 @@ pub struct Lambertian {
     pub color: Color,
 }
 
-impl FromStr for Lambertian {
-    type Err = MaterialError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut split = s.splitn(2, " ");
-        if split.next().ok_or(MaterialError::ParseError)? == "diffuse" {
-            Ok(Lambertian {
-                color: split.next().ok_or(MaterialError::ParseError)?
-                    .parse().map_err(|_| MaterialError::ParseError)?
-            })
-        } else {
-            Err(MaterialError::ParseError)
-        }
-    }
-}
 
 pub struct Metal {
     pub color: Color,
