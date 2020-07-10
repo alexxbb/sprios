@@ -90,7 +90,7 @@ fn ray_color(ray: &Ray, world: &World, depth: u32, rng: &mut rand::rngs::SmallRn
     }
     let dir = ray.direction.unit();
     let t = 0.5 * (dir.y + 1.0);
-    Color::new(1.0, 1.0, 1.0) * (1.0 - t) + Color::new(0.5, 0.7, 1.0) * t
+    Color::new(1.0, 1.0, 1.0) * (1.0 - t) + &world.background * t
 }
 
 pub fn render<EV>(
@@ -98,7 +98,6 @@ pub fn render<EV>(
     image_ptr: Arc<AtomicPtr<f32>>,
     num_threads: usize,
     world: Arc<World>,
-    camera: Arc<Camera>,
     event: EV,
 ) -> RenderStats
 where
@@ -123,7 +122,6 @@ where
             let broker = Arc::clone(&broker);
             let image_ptr = Arc::clone(&image_ptr);
             let world = Arc::clone(&world);
-            let camera = Arc::clone(&camera);
             pool.execute(move || loop {
                 let mut broker = broker.lock().unwrap();
                 let bucket = broker.pop_front();
@@ -145,7 +143,7 @@ where
                     let (sx, sy) = rng.gen::<(f32, f32)>();
                     let u = (x as f32 + sx) / (settings.width - 1) as f32;
                     let v = ((settings.height - y) as f32 + sy) / (settings.height - 1) as f32;
-                    let ray = camera.get_ray(u, v, &mut rng);
+                    let ray = world.camera.get_ray(u, v, &mut rng);
                     let clr = ray_color(&ray, &world, MAX_DEPTH, &mut rng);
                     let idx = ((y * settings.width + x) * 3) as usize;
                     let ptr = image_ptr.load(Ordering::Relaxed);
@@ -197,8 +195,7 @@ mod tests {
                 color: (0.5, 0.5, 0.5).into(),
             }),
         ));
-        let world = Arc::new(world);
-        let camera = Arc::new(Camera::new(
+        world.camera = Camera::new(
             Point3::new(0.0, 0.0, 2.0),
             Point3::new(0.0, 0.0, -1.0),
             Vec3::new(0.0, 1.0, 0.0),
@@ -206,9 +203,10 @@ mod tests {
             300 as f32 / 200 as f32,
             0.0,
             f32::INFINITY,
-        ));
+        );
+        let world = Arc::new(world);
         let set = SettingsBuilder::new().samples(1).size(300, None).build();
-        render(set, img_ptr, 2, world, camera, |_| {});
+        render(set, img_ptr, 2, world, |_| {});
         assert_eq!(buf.len(), 300 * 200 * 3);
     }
 }

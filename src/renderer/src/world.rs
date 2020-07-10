@@ -8,9 +8,9 @@ use std::io::Read;
 trait Foo: Send + Sync {}
 
 pub struct World {
-    pub(crate) objects: Vec<Arc<dyn Hittable>>,
-    pub(crate) camera: Camera,
-    pub(crate) background: Color,
+    pub objects: Vec<Arc<dyn Hittable>>,
+    pub camera: Camera,
+    pub background: Color,
 }
 
 impl Hittable for World {
@@ -54,7 +54,7 @@ impl Hittable for World {
 
 impl World {
     pub fn new() -> World {
-        World { objects: vec![], camera: Camera::default(), background: Color::new(0.5, 0.5, 0.5) }
+        World { objects: vec![], camera: Camera::default(), background: Color::new(0.5, 0.7, 1.0) }
     }
     /*
         Why 'static is needed here??

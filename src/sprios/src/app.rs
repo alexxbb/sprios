@@ -146,13 +146,11 @@ impl App {
         let progress_clone = progress.clone();
         let image_buf = Rc::new(RefCell::new(Vec::<f32>::new()));
         let thread_pool = RefCell::new(ThreadPool::new(num_cpus::get_physical()));
-        let world = Arc::new(final_world());
         render_btn.connect_clicked(
             clone!(@weak image_buf,
                      @weak res_width,
                      @weak sampler,
                      @strong thread_pool,
-                     @strong world,
                      @weak fov,
                      @weak aperture => move |_| {
             let distrib = match sampler.get_active_text() {
@@ -165,12 +163,26 @@ impl App {
                 }
                 None => unreachable!()
             };
+
             let settings = SettingsBuilder::new()
-                            .bucket(bucket_size.get_value() as u32)
-                            .size(res_width.get_value() as u32, None)
-                            .samples(num_samples.get_value() as u32)
-                            .distribution(distrib)
-                            .build();
+                .bucket(bucket_size.get_value() as u32)
+                .size(res_width.get_value() as u32, None)
+                .samples(num_samples.get_value() as u32)
+                .distribution(distrib)
+                .build();
+            let mut world = final_world();
+            let lookfrom = Point3::new(13.0, 2.0, 3.0);
+            let lookat = Point3::new(0.0, 0.0, 0.0);
+            let foc_dist = (&lookfrom - &lookat).length();
+            world.camera = Camera::new(
+                lookfrom,
+                lookat,
+                Vec3::new(0.0, 1.0, 0.0),
+                fov.get_value() as u32,
+                settings.width as f32 / settings.height as f32,
+                aperture.get_value() as f32,
+                foc_dist);
+            let world = Arc::new(world);
 
             let cap = (settings.width * settings.height * 3) as usize;
             image_buf.borrow_mut().resize(cap, 0.0);
@@ -179,18 +191,6 @@ impl App {
             let event_sx = sx.clone();
             let buffer_ptr = Arc::new(AtomicPtr::new(image_buf.borrow_mut().as_mut_ptr()));
             let num_threads = num_threads.get_value() as usize;
-            let lookfrom = Point3::new(13.0, 2.0, 3.0);
-            let lookat = Point3::new(0.0, 0.0, 0.0);
-            let foc_dist = (&lookfrom - &lookat).length();
-            let foc_dist = 10.0;
-            let camera = Arc::new(Camera::new(
-                lookfrom,
-                lookat,
-                Vec3::new(0.0, 1.0, 0.0),
-                fov.get_value() as u32,
-                settings.width as f32 / settings.height as f32,
-                aperture.get_value() as f32,
-                foc_dist));
             std::thread::spawn(
                 clone!(@strong sx, @strong thread_pool, @strong world, @strong event_sx => move || {
                 let stats = render(
@@ -198,7 +198,6 @@ impl App {
                     buffer_ptr,
                     num_threads,
                     world,
-                    camera,
                     clone!(@strong event_sx => move |event| {
                         event_sx.send(Event::RenderEvent(event)).unwrap();
                     }),
