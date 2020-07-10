@@ -178,6 +178,7 @@ impl App {
             progress_clone.set_fraction(0.0);
             let event_sx = sx.clone();
             let buffer_ptr = Arc::new(AtomicPtr::new(image_buf.borrow_mut().as_mut_ptr()));
+            let num_threads = num_threads.get_value() as usize;
             let lookfrom = Point3::new(13.0, 2.0, 3.0);
             let lookat = Point3::new(0.0, 0.0, 0.0);
             let foc_dist = (&lookfrom - &lookat).length();
@@ -190,14 +191,12 @@ impl App {
                 settings.width as f32 / settings.height as f32,
                 aperture.get_value() as f32,
                 foc_dist));
-
-            thread_pool.borrow_mut().set_num_threads(num_threads.get_value() as usize);
             std::thread::spawn(
                 clone!(@strong sx, @strong thread_pool, @strong world, @strong event_sx => move || {
                 let stats = render(
                     settings,
                     buffer_ptr,
-                    Some(&thread_pool.borrow()),
+                    num_threads,
                     world,
                     camera,
                     clone!(@strong event_sx => move |event| {

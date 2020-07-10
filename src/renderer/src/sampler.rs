@@ -36,8 +36,8 @@ pub enum Distribution {
 
 pub fn create_sampler<R: 'static + Rng + Clone>(num: usize, stype: Distribution, rng: R) -> Box<dyn Sampler<R>> {
     match stype {
-        Distribution::Random => Box::new(PureRandom::new(num, 83, rng)),
-        Distribution::Jittered => Box::new(Jittered::new(num, 83, rng))
+        Distribution::Random => Box::new(PureRandom::new(num, 166, rng)),
+        Distribution::Jittered => Box::new(Jittered::new(num, 166, rng))
     }
 }
 

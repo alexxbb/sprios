@@ -17,6 +17,24 @@ pub struct BucketPixels {
     cursor: (u32, u32),
 }
 
+impl IntoIterator for Bucket {
+    type Item = (u32, u32);
+    type IntoIter = BucketPixels;
+
+    fn into_iter(self) -> Self::IntoIter {
+        BucketPixels {
+            bucket: self,
+            cursor: self.top_left,
+        }
+    }
+}
+
+impl Display for Bucket {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Bucket[{:?},{:?}]", self.top_left, self.bottom_right)
+    }
+}
+
 impl Iterator for BucketPixels {
     type Item = (u32, u32);
 
@@ -36,28 +54,14 @@ impl Iterator for BucketPixels {
     }
 }
 
-impl IntoIterator for Bucket {
-    type Item = (u32, u32);
-    type IntoIter = BucketPixels;
-
-    fn into_iter(self) -> Self::IntoIter {
-        BucketPixels {
-            bucket: self,
-            cursor: self.top_left,
-        }
-    }
-}
-
-impl Display for Bucket {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Bucket[{:?},{:?}]", self.top_left, self.bottom_right)
-    }
-}
-
 pub struct BucketGrid {
     pub width: u32,
     pub height: u32,
     pub bucket_size: u32,
+}
+
+pub struct BucketIter<'grid> {
+    grid: &'grid BucketGrid,
     cursor: (u32, u32),
 }
 
@@ -67,40 +71,42 @@ impl BucketGrid {
             width: grid_width,
             height: grid_height,
             bucket_size,
-            cursor: (0, 0),
         }
+    }
+    pub fn buckets(&self) -> BucketIter<'_> {
+        BucketIter { grid: self, cursor: (0, 0) }
     }
 }
 
-impl Iterator for BucketGrid {
+impl Iterator for BucketIter<'_> {
     type Item = Bucket;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.cursor.1 == self.height {
+        if self.cursor.1 == self.grid.height {
             return None;
         }
         let top_left = self.cursor;
         let mut bottom_right = (
-            self.cursor.0 + self.bucket_size,
-            self.cursor.1 + self.bucket_size,
+            self.cursor.0 + self.grid.bucket_size,
+            self.cursor.1 + self.grid.bucket_size,
         );
         // Advance forward
-        self.cursor.0 += self.bucket_size;
+        self.cursor.0 += self.grid.bucket_size;
         // Overflow
-        if self.cursor.0 >= self.width {
+        if self.cursor.0 >= self.grid.width {
             // Advance down
             self.cursor.0 = 0;
-            self.cursor.1 += self.bucket_size;
+            self.cursor.1 += self.grid.bucket_size;
             // Clip the bucket to width
-            bottom_right.0 = self.width;
+            bottom_right.0 = self.grid.width;
         }
         // Check for overflow
-        if self.cursor.1 > self.height {
+        if self.cursor.1 > self.grid.height {
             // bottom_right.1 = self.height;
-            self.cursor.1 = self.height;
+            self.cursor.1 = self.grid.height;
         }
-        if bottom_right.1 > self.height {
-            bottom_right.1 = self.height;
+        if bottom_right.1 > self.grid.height {
+            bottom_right.1 = self.grid.height;
         }
         Some(Bucket {
             top_left,
@@ -129,19 +135,19 @@ mod tests {
         assert_eq!(
             Bucket {
                 top_left: (0, 0),
-                bottom_right: (5, 5)
+                bottom_right: (5, 5),
             }
-            .into_iter()
-            .count(),
+                .into_iter()
+                .count(),
             25
         );
         assert_eq!(
             Bucket {
                 top_left: (10, 10),
-                bottom_right: (15, 15)
+                bottom_right: (15, 15),
             }
-            .into_iter()
-            .count(),
+                .into_iter()
+                .count(),
             25
         );
     }
