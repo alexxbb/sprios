@@ -46,15 +46,16 @@ impl AaBb {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Vec3;
 
     #[test]
     fn test_hit() {
         let min = Point3::new(3.0, 2.0, 0.0);
         let max = Point3::new(5.0, 4.0, 0.0);
         let aabb = AaBb::new(min, max);
-        let mut ray = Ray::new(&Point3::new(1.0, 1.0, 0.0), &Vec3::new(2.0, 2.0, 0.0));
+        let  ray = Ray::new(&Point3::new(1.0, 1.0, 0.0), &Vec3::new(2.0, 2.0, 0.0));
         assert!(aabb.hit(&ray, 0.0001, f32::INFINITY));
-        let mut ray = Ray::new(&Point3::new(1.0, 1.0, 0.0), &Vec3::new(2.0, 1.0, 0.0));
+        let  ray = Ray::new(&Point3::new(1.0, 1.0, 0.0), &Vec3::new(2.0, 1.0, 0.0));
         assert!(!aabb.hit(&ray, 0.0001, f32::INFINITY));
     }
 }

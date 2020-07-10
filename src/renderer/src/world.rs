@@ -121,7 +121,6 @@ mod tests {
     #[test]
     fn test_read_file() {
         assert!(World::from_file(Path::new("Foo")).is_err());
-        let sc_1 = Path::new("../scene_1.rsc");
-        assert!(World::from_file(sc_1).is_ok());
+        assert!(World::from_file("../scene_1.rsc").is_ok());
     }
 }
