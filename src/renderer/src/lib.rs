@@ -186,8 +186,8 @@ mod tests {
 
     #[test]
     fn test_render() {
-        let mut buf = Vec::<u8>::new();
-        buf.resize(300 * 200 * 3, 0);
+        let mut buf = Vec::<f32>::new();
+        buf.resize(300 * 200 * 3, 0.0);
         let img_ptr = Arc::new(AtomicPtr::new(buf.as_mut_ptr()));
         let mut world = World::new();
         world.add(Sphere::new(
@@ -208,7 +208,7 @@ mod tests {
             f32::INFINITY,
         ));
         let set = SettingsBuilder::new().samples(1).size(300, None).build();
-        render(set, img_ptr, None, world, camera, |_| {});
+        render(set, img_ptr, 2, world, camera, |_| {});
         assert_eq!(buf.len(), 300 * 200 * 3);
     }
 }

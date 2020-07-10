@@ -119,6 +119,7 @@ impl<R: Rng + Clone> Sampler<R> for Jittered<R> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::SeedableRng;
 
     #[test]
     fn test() {

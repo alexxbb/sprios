@@ -121,13 +121,13 @@ mod tests {
 
     #[test]
     fn test_1() {
-        assert_eq!(BucketGrid::new(9, 5, 3).count(), 6);
-        assert_eq!(BucketGrid::new(10, 5, 4).count(), 6);
-        assert_eq!(BucketGrid::new(10, 5, 5).count(), 2);
-        assert_eq!(BucketGrid::new(25, 5, 5).count(), 5);
-        assert_eq!(BucketGrid::new(20, 8, 4).count(), 10);
-        assert_eq!(BucketGrid::new(20, 8, 8).count(), 3);
-        assert_eq!(BucketGrid::new(20, 11, 3).count(), 28);
+        assert_eq!(BucketGrid::new(9, 5, 3).buckets().count(), 6);
+        assert_eq!(BucketGrid::new(10, 5, 4).buckets().count(), 6);
+        assert_eq!(BucketGrid::new(10, 5, 5).buckets().count(), 2);
+        assert_eq!(BucketGrid::new(25, 5, 5).buckets().count(), 5);
+        assert_eq!(BucketGrid::new(20, 8, 4).buckets().count(), 10);
+        assert_eq!(BucketGrid::new(20, 8, 8).buckets().count(), 3);
+        assert_eq!(BucketGrid::new(20, 11, 3).buckets().count(), 28);
     }
 
     #[test]
