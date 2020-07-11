@@ -3,6 +3,7 @@ use crate::material::Material;
 use crate::ray::Ray;
 use crate::vec::*;
 use crate::bbox::AaBb;
+use crate::Lambertian;
 
 pub struct Sphere {
     pub center: Point3,
@@ -11,11 +12,11 @@ pub struct Sphere {
 }
 
 impl Sphere {
-    pub fn new<P: Into<Point3>>(center: P, radius: f32, mat: Box<dyn Material>) -> Sphere {
+    pub fn new<P: Into<Point3>>(center: P, radius: f32, mat: Option<Box<dyn Material>>) -> Sphere {
         Sphere {
             center: center.into(),
             radius,
-            material: mat,
+            material: mat.unwrap_or(Box::new(Lambertian{color: Color::new(0.8, 0.8, 0.8)})),
         }
     }
 }
@@ -54,5 +55,9 @@ impl Hittable for Sphere {
     fn bbox(&self, _t0: f32, _t1: f32) -> Option<AaBb> {
         let rad = Vec3::new(self.radius, self.radius, self.radius);
         Some(AaBb::new(&self.center - &rad, &self.center + &rad))
+    }
+
+    fn material(&self) -> Option<&dyn Material> {
+        Some(self.material.as_ref())
     }
 }

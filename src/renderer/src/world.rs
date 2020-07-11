@@ -50,6 +50,10 @@ impl Hittable for World {
         }
         out_box
     }
+
+    fn material(&self) -> Option<&dyn Material> {
+        None
+    }
 }
 
 impl World {
@@ -76,14 +80,16 @@ impl World {
             if line.starts_with('#') || line.is_empty() {
                 continue;
             }
+            let mut material = None;
             if let Ok(cam) = line.parse::<Camera>() {
                 world.camera = cam;
+                // } else if let Ok(obj) =  line.parse::<Box<dyn Hittable>>(){
+                //
             } else if line.starts_with("background") {
                 world.background = line.splitn(2, " ").nth(1)
                     .ok_or("Missing background color")?.parse()?;
             } else if let Ok(mat) = line.parse::<Box<dyn Material>>() {
-                dbg!(mat.color());
-
+                material = Some(mat);
             } else {
                 eprintln!("Could not parse line: {}", line);
             }
@@ -103,16 +109,19 @@ mod tests {
     fn test_1() {
         let mut world = World::new();
         world.add(
-            Sphere::new((0.0, 0.0, 0.0), 0.5, Box::new(Lambertian { color: Color::ONE })),
+            Sphere::new((0.0, 0.0, 0.0), 0.5,
+                        Some(Box::new(Lambertian { color: Color::ONE }))),
         );
         world.add(
-            Sphere::new((1.0, 0.0, 0.0), 0.5, Box::new(Lambertian { color: Color::ONE })),
+            Sphere::new((1.0, 0.0, 0.0), 0.5,
+                        Some(Box::new(Lambertian { color: Color::ONE }))),
         );
         let bbox = world.bbox(0.0, 0.0).unwrap();
         assert_eq!(&bbox.min, &Point3::new(-0.5, -0.5, -0.5));
         assert_eq!(&bbox.max, &Point3::new(1.5, 0.5, 0.5));
         world.add(
-            Sphere::new((1.0, 1.0, 0.0), 0.5, Box::new(Lambertian { color: Color::ONE })),
+            Sphere::new((1.0, 1.0, 0.0), 0.5,
+                        Some(Box::new(Lambertian { color: Color::ONE }))),
         );
         let bbox = world.bbox(0.0, 0.0).unwrap();
         assert_eq!(&bbox.max, &Point3::new(1.5, 1.5, 0.5));

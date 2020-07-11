@@ -2,6 +2,8 @@ use crate::material::Material;
 use crate::ray::Ray;
 use crate::vec::{Point3, Vec3};
 use crate::bbox::AaBb;
+use std::str::FromStr;
+use crate::Sphere;
 
 #[derive(Clone)]
 pub struct HitRecord<'obj> {
@@ -35,4 +37,21 @@ impl<'obj> HitRecord<'obj> {
 pub trait Hittable: Send + Sync {
     fn hit<'obj>(&'obj self, ray: &Ray, t_min: f32, t_max: f32, rec: &mut HitRecord<'obj>) -> bool;
     fn bbox(&self, t0: f32, t1: f32) -> Option<AaBb>;
+    fn material(&self) -> Option<&dyn Material>;
+}
+
+impl FromStr for Box<dyn Hittable> {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut split = s.split(" ");
+        let shape = split.next().ok_or(())?;
+        match shape {
+            "sphere" => {
+                return Ok(Box::new(Sphere::new(Point3::ZERO, 0.5, None)))
+            }
+            _ => {}
+        }
+        Err(())
+    }
 }

@@ -191,10 +191,10 @@ mod tests {
         world.add(Sphere::new(
             (0.0, -100.5, -1.0),
             100.0,
-            Box::new(Lambertian {
+            Some(Box::new(Lambertian {
                 color: (0.5, 0.5, 0.5).into(),
             }),
-        ));
+        )));
         world.camera = Camera::new(
             Point3::new(0.0, 0.0, 2.0),
             Point3::new(0.0, 0.0, -1.0),
