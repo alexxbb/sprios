@@ -1,7 +1,7 @@
-use crate::utils::Clip;
-use crate::vec::Color;
-use std::io::BufWriter;
-use std::io::Write;
+// use crate::utils::Clip;
+// use crate::vec::Color;
+// use std::io::BufWriter;
+// use std::io::Write;
 
 /*
 pub struct ImageBuffer {

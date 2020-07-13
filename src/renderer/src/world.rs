@@ -1,9 +1,11 @@
 use crate::hittable::{HitRecord, Hittable};
-use crate::{Ray, Camera, Color, Material, Lambertian};
+use crate::{Ray, Camera, Color, Material};
+use crate::errors::SpriosError;
 use std::sync::Arc;
 use crate::bbox::AaBb;
 use std::path::Path;
 use std::io::Read;
+use std::rc::Rc;
 
 trait Foo: Send + Sync {}
 
@@ -54,6 +56,13 @@ impl Hittable for World {
     fn material(&self) -> Option<&dyn Material> {
         None
     }
+
+    fn set_material(&mut self, mat: Box<dyn Material>) {
+    }
+
+    fn name(&self) -> &'static str {
+        "World"
+    }
 }
 
 impl World {
@@ -66,11 +75,11 @@ impl World {
         contain references. But we're taking the ownership here and storing the object in Arc,
         which requires the data to be 'static
      */
-    pub fn add(&mut self, object: impl Hittable + 'static) {
-        self.objects.push(Arc::new(object))
+    pub fn add(&mut self, object: Arc<dyn Hittable>) {
+        self.objects.push(object)
     }
 
-    pub fn from_file(path: impl AsRef<Path>) -> Result<World, Box<dyn std::error::Error>> {
+    pub fn from_file(path: impl AsRef<Path>) -> Result<World, SpriosError> {
         let mut file = std::fs::File::open(path)?;
         let mut content = String::new();
         file.read_to_string(&mut content);
@@ -83,15 +92,19 @@ impl World {
             let mut material = None;
             if let Ok(cam) = line.parse::<Camera>() {
                 world.camera = cam;
-                // } else if let Ok(obj) =  line.parse::<Box<dyn Hittable>>(){
-                //
+            } else if let Ok(mut obj) =  line.parse::<Arc<dyn Hittable>>(){
+                if material.is_some() {
+                    obj.set_material(material.take().unwrap())
+                }
+                world.add(obj);
+
             } else if line.starts_with("background") {
                 world.background = line.splitn(2, " ").nth(1)
-                    .ok_or("Missing background color")?.parse()?;
+                    .ok_or(SpriosError::WorldParseError("background".to_string()))?.parse()?;
             } else if let Ok(mat) = line.parse::<Box<dyn Material>>() {
                 material = Some(mat);
             } else {
-                eprintln!("Could not parse line: {}", line);
+                return Err(SpriosError::WorldParseError(format!("Could not parse line: {}", line)))
             }
         }
         Ok(world)
@@ -109,19 +122,19 @@ mod tests {
     fn test_1() {
         let mut world = World::new();
         world.add(
-            Sphere::new((0.0, 0.0, 0.0), 0.5,
-                        Some(Box::new(Lambertian { color: Color::ONE }))),
+            Arc::new(Sphere::new((0.0, 0.0, 0.0), 0.5,
+                        Some(Box::new(Lambertian { color: Color::ONE })))),
         );
         world.add(
-            Sphere::new((1.0, 0.0, 0.0), 0.5,
-                        Some(Box::new(Lambertian { color: Color::ONE }))),
+            Arc::new(Sphere::new((1.0, 0.0, 0.0), 0.5,
+                        Some(Box::new(Lambertian { color: Color::ONE })))),
         );
         let bbox = world.bbox(0.0, 0.0).unwrap();
         assert_eq!(&bbox.min, &Point3::new(-0.5, -0.5, -0.5));
         assert_eq!(&bbox.max, &Point3::new(1.5, 0.5, 0.5));
         world.add(
-            Sphere::new((1.0, 1.0, 0.0), 0.5,
-                        Some(Box::new(Lambertian { color: Color::ONE }))),
+            Arc::new(Sphere::new((1.0, 1.0, 0.0), 0.5,
+                        Some(Box::new(Lambertian { color: Color::ONE })))),
         );
         let bbox = world.bbox(0.0, 0.0).unwrap();
         assert_eq!(&bbox.max, &Point3::new(1.5, 1.5, 0.5));

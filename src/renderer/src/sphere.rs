@@ -60,4 +60,13 @@ impl Hittable for Sphere {
     fn material(&self) -> Option<&dyn Material> {
         Some(self.material.as_ref())
     }
+
+    fn set_material(&mut self, mat: Box<dyn Material>) {
+        self.material = mat;
+    }
+
+    #[inline]
+    fn name(&self) -> &'static str {
+        "Sphere"
+    }
 }

@@ -2,44 +2,48 @@ use crate::hittable::HitRecord;
 use crate::ray::Ray;
 use crate::vec::{Color, Vec3};
 use std::str::FromStr;
+use std::convert::TryInto;
+use crate::errors::SpriosError::WorldParseError;
 
 pub trait Material: Sync + Send {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord, rng: Option<&mut dyn rand::RngCore>) -> Option<Ray>;
     fn color(&self) -> &Color;
 }
 
-pub enum MaterialError {
-    ParseError
-}
 
 impl FromStr for Box<dyn Material> {
-    type Err = MaterialError;
+    type Err = crate::errors::SpriosError;
 
     fn from_str(s: &str) -> Result<Box<dyn Material>, Self::Err> {
-        let mut split = s.splitn(2, " ");
-        match split.next().ok_or(MaterialError::ParseError)?
+        let parts: Vec<&str> = s.split(" ").collect();
+        let mat = *parts.get(0).ok_or_else(||WorldParseError("Missing material type".to_string()))?;
+        let parms = parts.iter()
+            .skip(1)
+            .map(|v| v.parse::<f32>())
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|_|WorldParseError("Could not parse material parms".to_string()))?;
+        match mat
         {
             "diffuse" => {
-                Ok(Box::new(Lambertian {
-                    color: split.next().ok_or(MaterialError::ParseError)?
-                        .parse().map_err(|_| MaterialError::ParseError)?
-                }))
+                if parms.len() < 3 {
+                    return Err(WorldParseError("Color must have 3 components".to_string()));
+                }
+                Ok(Box::new(Lambertian { color: Color::from(&[parms[0], parms[1], parms[2]]) }))
             }
             "metal" => {
-                let parms = split.next().ok_or(MaterialError::ParseError)?
-                    .split(" ")
-                    .map(|v| v.parse::<f32>())
-                    .collect::<Result<Vec<_>, _>>().map_err(|_| MaterialError::ParseError)?;
-                if parms.len() < 4 {
-                    return Err(MaterialError::ParseError);
+                if parms.len() < 3 {
+                    return Err(WorldParseError("Color must have 3 components".to_string()));
                 }
                 Ok(Box::new(Metal {
-                    color: Color::from((parms[0], parms[1], parms[2])),
-                    fuzz: parms[3],
+                    color: Color::from(&[parms[0], parms[1], parms[2]]),
+                    fuzz: *parms.last().ok_or(WorldParseError("Missing fuzz parm".to_string()))?,
                 }))
             }
-            _ => {
-                Err(MaterialError::ParseError)
+            "glass" => {
+                return Err(WorldParseError("Glass not supported".to_string()));
+            }
+            m => {
+                return Err(WorldParseError(format!("Unknown material {}", m)));
             }
         }
     }

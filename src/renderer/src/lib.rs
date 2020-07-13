@@ -12,6 +12,7 @@ mod sphere;
 mod utils;
 mod vec;
 mod world;
+mod errors;
 
 use crate::buckets::Bucket;
 use crate::buckets::BucketGrid;
@@ -26,7 +27,6 @@ pub use vec::{Color, Point3, Vec3};
 pub use world::World;
 
 use crate::hittable::HitRecord;
-use rand::rngs::SmallRng;
 use rand::SeedableRng;
 use rand::Rng;
 use std::collections::VecDeque;
@@ -188,13 +188,13 @@ mod tests {
         buf.resize(300 * 200 * 3, 0.0);
         let img_ptr = Arc::new(AtomicPtr::new(buf.as_mut_ptr()));
         let mut world = World::new();
-        world.add(Sphere::new(
+        world.add(Arc::new(Sphere::new(
             (0.0, -100.5, -1.0),
             100.0,
             Some(Box::new(Lambertian {
                 color: (0.5, 0.5, 0.5).into(),
             }),
-        )));
+        ))));
         world.camera = Camera::new(
             Point3::new(0.0, 0.0, 2.0),
             Point3::new(0.0, 0.0, -1.0),
