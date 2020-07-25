@@ -15,6 +15,7 @@ use std::sync::atomic::AtomicPtr;
 use std::sync::{Arc};
 use threadpool::{ThreadPool};
 use gtk::prelude::ComboBoxExtManual;
+use viewer::ImageViewer;
 
 static LOGO: &[u8;33647] = &include_bytes!("../rust-logo.png");
 
@@ -88,14 +89,15 @@ impl App {
         logo.set_from_pixbuf(pixbuf.as_ref());
 
         let stat_label = Label::new(None);
-        let gtk_image = Image::new();
+        // let gtk_image = Image::new();
+        let render_view = Rc::new(RefCell::new(ImageViewer::new(&self.window)));
         let progress = ProgressBar::new();
         progress.set_show_text(true);
 
         let right_panel = GtkBox::new(Orientation::Vertical, 0);
         let status_box = GtkBox::new(Orientation::Horizontal, 0);
         status_box.pack_start(&stat_label, false, false, 3);
-        right_panel.pack_start(&gtk_image, true, false, 3);
+        right_panel.pack_start(&render_view.borrow().root_widget(), true, false, 3);
         right_panel.pack_start(&status_box, false, false, 3);
 
         let left_panel = GtkBox::new(Orientation::Vertical, 0);
@@ -195,7 +197,7 @@ impl App {
                 event_sx.send(Event::RenderEvent(RenderEvent::Completed(stats))).unwrap();
             }));
         }));
-        rx.attach(None, clone!(@strong image_buf, @strong gtk_image => move |event| {
+        rx.attach(None, clone!(@strong image_buf, @strong render_view => move |event| {
             match event {
                 Event::RenderEvent(rv) => {
                     match rv {
@@ -212,7 +214,7 @@ impl App {
                                 .write_bytes(&bytes)
                                 .expect("Could not write to buffer");
                             loader.close().unwrap();
-                            gtk_image.set_from_pixbuf(loader.get_pixbuf().as_ref());
+                            render_view.borrow_mut().load_pixbuf(loader.get_pixbuf().as_ref());
                         }
                         RenderEvent::Percent(num) => {
                             let frac = num as f64 / 100 as f64;
