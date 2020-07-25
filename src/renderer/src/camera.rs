@@ -60,7 +60,7 @@ impl FromStr for Camera {
 
         fn next<T: std::str::FromStr>(iter: &mut std::str::Split<&str>) -> Result<T, ()> {
             match iter.next() {
-                Some(v) => v.parse::<T>().map_err(|_|()),
+                Some(v) => v.parse::<T>().map_err(|_| ()),
                 None => Err(())
             }
         }
@@ -69,20 +69,21 @@ impl FromStr for Camera {
             next::<u32>(&mut values)? as f32,
             next::<u32>(&mut values)? as f32,
             next::<u32>(&mut values)? as f32);
-        let lookatt = Point3::new(
+        let lookat = Point3::new(
             next::<u32>(&mut values)? as f32,
             next::<u32>(&mut values)? as f32,
             next::<u32>(&mut values)? as f32);
         let fov = next::<u32>(&mut values)?;
         let app = next::<f32>(&mut values)?;
+        let focus = (&lookfrom - &lookat).length();
         Ok(Camera::new(
             lookfrom,
-            lookatt,
+            lookat,
             Vec3::new(0.0, 1.0, 0.0),
             fov,
             1.7777,
             app,
-            10.0,
+            focus,
         ))
     }
 }

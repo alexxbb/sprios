@@ -85,16 +85,16 @@ impl World {
         file.read_to_string(&mut content);
 
         let mut world = World::new();
+        let mut material = None;
         for line in content.lines() {
             if line.starts_with('#') || line.is_empty() {
                 continue;
             }
-            let mut material = None;
             if let Ok(cam) = line.parse::<Camera>() {
                 world.camera = cam;
-            } else if let Ok(mut obj) =  line.parse::<Arc<dyn Hittable>>(){
+            } else if let Ok(mut obj) =  crate::hittable::from_string(line){
                 if material.is_some() {
-                    obj.set_material(material.take().unwrap())
+                    Arc::get_mut(&mut obj).unwrap().set_material(material.take().unwrap())
                 }
                 world.add(obj);
 

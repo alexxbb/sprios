@@ -1,7 +1,7 @@
 use std::num::{ParseFloatError, ParseIntError};
 use std::error::Error;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum SpriosError {
     WorldParseError(String),
 }

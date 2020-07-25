@@ -1,3 +1,4 @@
+use crate::errors::{SpriosError, SpriosError::WorldParseError};
 use crate::material::Material;
 use crate::ray::Ray;
 use crate::vec::{Point3, Vec3};
@@ -5,7 +6,6 @@ use crate::bbox::AaBb;
 use std::str::FromStr;
 use crate::Sphere;
 use std::sync::Arc;
-// use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct HitRecord<'obj> {
@@ -44,18 +44,19 @@ pub trait Hittable: Send + Sync {
     fn name(&self) -> &'static str;
 }
 
-impl FromStr for Arc<dyn Hittable> {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut split = s.split(" ");
-        let shape = split.next().ok_or(())?;
-        match shape {
-            "sphere" => {
-                return Ok(Arc::new(Sphere::new(Point3::ZERO, 0.5, None)))
-            }
-            _ => {}
+pub fn from_string(s: &str) -> Result<Arc<dyn Hittable>, SpriosError> {
+    let mut split = s.split_whitespace();
+    let shape = split.next().ok_or(WorldParseError("empty object".to_string()))?;
+    let parms = split
+        .map(|v| v.parse::<f32>())
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|_|WorldParseError("Could not parse object parms".to_string()))?;
+    match shape {
+        "sphere" => {
+            let center = Point3::new(parms[0], parms[1], parms[2]);
+            return Ok(Arc::new(Sphere::new(center, parms[3], None)));
         }
-        Err(())
+        _ => {}
     }
+    Err(WorldParseError("Not a Hittable".to_string()))
 }

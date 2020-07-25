@@ -935,6 +935,7 @@ dependencies = [
  "rand",
  "renderer",
  "threadpool",
+ "viewer",
 ]
 
 [[package]]

@@ -10,6 +10,7 @@ command = ['getopts']
 
 [dependencies]
 renderer = {path = "../renderer"}
+viewer = {path = "../viewer"}
 getopts = {version = "0.2.21", optional = true}
 num_cpus = "1.13.0"
 threadpool = "1.8.1"

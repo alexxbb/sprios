@@ -1,5 +1,5 @@
 use crate::utils;
-use crate::worlds::*;
+use crate::worlds::{World, final_world};
 use gdk_pixbuf::{PixbufLoader};
 use gio::ApplicationExt;
 use glib::{clone};
@@ -170,18 +170,7 @@ impl App {
                 .samples(num_samples.get_value() as u32)
                 .distribution(distrib)
                 .build();
-            let mut world = final_world();
-            let lookfrom = Point3::new(13.0, 2.0, 3.0);
-            let lookat = Point3::new(0.0, 0.0, 0.0);
-            let foc_dist = (&lookfrom - &lookat).length();
-            world.camera = Camera::new(
-                lookfrom,
-                lookat,
-                Vec3::new(0.0, 1.0, 0.0),
-                fov.get_value() as u32,
-                settings.width as f32 / settings.height as f32,
-                aperture.get_value() as f32,
-                foc_dist);
+            let mut world = World::from_file("scene_1.rsc").unwrap();
             let world = Arc::new(world);
 
             let cap = (settings.width * settings.height * 3) as usize;
