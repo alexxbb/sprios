@@ -72,11 +72,15 @@ impl App {
 
         // Camera
         let aperture = SpinButton::new_with_range(0.0, 2.0, 0.1);
+        aperture.set_sensitive(false);
         let aperture_label = Label::new(Some("Aperture"));
+        aperture_label.set_sensitive(false);
         aperture.set_value(0.1);
 
         let fov = SpinButton::new_with_range(10.0, 50.0, 1.0);
+        fov.set_sensitive(false);
         let fov_label = Label::new(Some("FOV"));
+        fov_label.set_sensitive(false);
         fov.set_value(20.0);
 
         // Logo
@@ -89,7 +93,6 @@ impl App {
         logo.set_from_pixbuf(pixbuf.as_ref());
 
         let stat_label = Label::new(None);
-        // let gtk_image = Image::new();
         let render_view = Rc::new(RefCell::new(ImageViewer::new(&self.window)));
         let progress = ProgressBar::new();
         progress.set_show_text(true);
@@ -193,18 +196,17 @@ impl App {
                         event_sx.send(Event::RenderEvent(event)).unwrap();
                     }),
                 );
-                dbg!(&stats);
                 event_sx.send(Event::RenderEvent(RenderEvent::Completed(stats))).unwrap();
             }));
         }));
-        rx.attach(None, clone!(@strong image_buf, @strong render_view => move |event| {
+        rx.attach(None, clone!(@strong image_buf, @strong render_view, @strong stat_label => move |event| {
             match event {
                 Event::RenderEvent(rv) => {
                     match rv {
                         RenderEvent::Completed(stat) => {
+                            stat_label.set_text(&format!("Time: {:.2} sec | FPS: {:.2} | MRays: {:.2}", stat.render_time, stat.fps, stat.mrays));
                         }
                         RenderEvent::SampleDone(stat) => {
-                            println!("SampleDone: {:?}", stat.sample);
                             let bytes = utils::convert_buffer(&image_buf.borrow(), stat.sample);
                             let loader = PixbufLoader::new_with_type("pnm").unwrap();
                             let image_width = res_width.get_value() as u32;
