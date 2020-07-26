@@ -97,7 +97,7 @@ impl App {
         let right_panel = GtkBox::new(Orientation::Vertical, 0);
         let status_box = GtkBox::new(Orientation::Horizontal, 0);
         status_box.pack_start(&stat_label, false, false, 3);
-        right_panel.pack_start(&render_view.borrow().root_widget(), true, false, 3);
+        right_panel.pack_start(&render_view.borrow().root_widget(), true, true, 3);
         right_panel.pack_start(&status_box, false, false, 3);
 
         let left_panel = GtkBox::new(Orientation::Vertical, 0);

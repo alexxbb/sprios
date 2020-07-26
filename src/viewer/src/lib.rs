@@ -42,8 +42,6 @@ impl InnerImpl {
                 let w = (source_buf.borrow().get_width() as f64 * z).ceil() as i32;
                 let h = (source_buf.borrow().get_height() as f64 * z).ceil() as i32;
                 let scaled = source_buf.borrow().scale_simple(w, h, gdk_pixbuf::InterpType::Tiles).expect("Oops");
-                // self.scrollable.set_min_content_width(scaled.get_width());
-                // self.scrollable.set_min_content_height(scaled.get_height());
                 self.image.set_from_pixbuf(Some(&scaled));
             }
             None => ()
@@ -78,14 +76,11 @@ impl ImageViewer {
 impl ImageViewer {
     pub fn new(window: &gtk::ApplicationWindow) -> Self {
         let image = Image::new_from_pixbuf(None);
-        let viewport = Viewport::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
         let scrollable = ScrolledWindow::new(gtk::NONE_ADJUSTMENT, gtk::NONE_ADJUSTMENT);
-        scrollable.set_hexpand(true);
-        scrollable.set_vexpand(true);
-        viewport.add(&image);
-        scrollable.add(&viewport);
+        image.set_hexpand(true);
+        image.set_vexpand(true);
+        scrollable.add(&image);
         scrollable.set_kinetic_scrolling(false);
-        scrollable.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
         scrollable.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
         let mmb = Rc::new(Cell::new(Option::<(f64, f64)>::None));
         let cursor = Rc::new(Cell::new((0.0, 0.0)));
@@ -146,32 +141,20 @@ impl ImageViewer {
         let _inner = Rc::clone(&inner);
         inner.borrow().scrollable.connect_scroll_event(move |_, e| {
             let (_, zoom) = e.get_scroll_deltas().unwrap();
-            let fac = 0.1 * zoom;
+            let fac = 0.2 * zoom;
             let incr = _inner.borrow_mut().zoom.get() + fac;
             _inner.borrow_mut().zoom.replace(incr);
             _inner.borrow().apply_scale();
+            let hadj = _inner.borrow().scrollable.get_hadjustment().unwrap();
+            let vadj = _inner.borrow().scrollable.get_vadjustment().unwrap();
+            let scaled_width = _inner.borrow().image.get_pixbuf().unwrap().get_width() as f64;
+            let scaled_heigth = _inner.borrow().image.get_pixbuf().unwrap().get_height() as f64;
+            let hv = (scaled_width - hadj.get_page_size()) / 2.0;
+            let vv = (scaled_heigth - vadj.get_page_size()) / 2.0;
+            hadj.set_value(hv);
+            vadj.set_value(vv);
             glib::signal::Inhibit(true)
         });
         Self { inner }
     }
 }
-
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    pub fn run() {
-        let application = Application::new(None, Default::default()).expect("Fail to init");
-        application.connect_activate(|app| {
-            let win = ApplicationWindow::new(app);
-            let view = ImageViewer::new(&win);
-            view.load_file("/home/alex/Sandbox/rust/sprios/src/viewer/image.jpeg");
-            win.add(&view.root_widget());
-            win.show_all();
-        });
-        application.run(&[]);
-    }
-}
-
