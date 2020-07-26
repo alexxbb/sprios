@@ -214,7 +214,8 @@ impl App {
                                 .write_bytes(&bytes)
                                 .expect("Could not write to buffer");
                             loader.close().unwrap();
-                            render_view.borrow_mut().load_pixbuf(loader.get_pixbuf().as_ref());
+                            let pixbuf = loader.get_pixbuf().expect("Could not produce pixbuf");
+                            render_view.borrow_mut().load_pixbuf(&pixbuf);
                         }
                         RenderEvent::Percent(num) => {
                             let frac = num as f64 / 100 as f64;

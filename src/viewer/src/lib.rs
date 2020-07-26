@@ -26,7 +26,7 @@ pub struct ImageViewer {
 #[derive(Debug)]
 struct InnerImpl {
     pub(crate) image: Image,
-    pub(crate) zoom_buf: Option<RefCell<Pixbuf>>,
+    pub(crate) source_buf: Option<RefCell<Pixbuf>>,
     pub(crate) scrollable: ScrolledWindow,
     pub(crate) zoom: Rc<Cell<f64>>,
     pub(crate) mmb: Rc<Cell<Option<(f64, f64)>>>,
@@ -34,22 +34,20 @@ struct InnerImpl {
 }
 
 impl InnerImpl {
-    fn scale_buf(&self, zoom: f64) {
-        match self.zoom_buf.as_ref() {
-            Some(zoom_buf) => {
-                let fac = 0.1 * zoom;
-                let incr = self.zoom.get() + fac;
-                self.zoom.replace(incr);
-                let z = (1.0 - incr).max(0.01);
-                let w = (zoom_buf.borrow().get_width() as f64 * z).ceil() as i32;
-                let h = (zoom_buf.borrow().get_height() as f64 * z).ceil() as i32;
-                let scaled = zoom_buf.borrow().scale_simple(w, h, gdk_pixbuf::InterpType::Tiles).expect("Oops");
-                zoom_buf.replace(scaled);
-                // Something is wrong here
-                todo!();
-                self.image.set_from_pixbuf(Some(&zoom_buf.borrow()))
+    fn apply_scale(&self) {
+        match self.source_buf.as_ref() {
+            Some(source_buf) => {
+                let zoom = self.zoom.get();
+                let z = (1.0 - zoom).max(0.01);
+                let w = (source_buf.borrow().get_width() as f64 * z).ceil() as i32;
+                let h = (source_buf.borrow().get_height() as f64 * z).ceil() as i32;
+                let scaled = source_buf.borrow().scale_simple(w, h, gdk_pixbuf::InterpType::Tiles).expect("Oops");
+                // self.scrollable.set_min_content_width(scaled.get_width());
+                // self.scrollable.set_min_content_height(scaled.get_height());
+                self.image.set_from_pixbuf(Some(&scaled));
             }
             None => ()
+
         }
     }
 }
@@ -57,13 +55,18 @@ impl InnerImpl {
 impl ImageViewer {
     pub fn load_file(&self, f: &str) {
         let buf = Pixbuf::new_from_file(f).unwrap();
-        self.inner.borrow().image.set_from_pixbuf(Some(&buf));
-        self.inner.borrow_mut().zoom_buf.replace(RefCell::new(buf.clone()));
+        self.load_pixbuf(&buf);
     }
-    pub fn load_pixbuf(&self, buf: Option<&Pixbuf>) {
-        self.inner.borrow().image.set_from_pixbuf(buf);
-        if let Some(b) = buf.as_ref() {
-            self.inner.borrow_mut().zoom_buf.replace(RefCell::new((*b).clone()));
+    pub fn load_pixbuf(&self, buf: &Pixbuf) {
+        self.inner.borrow_mut().scrollable.set_min_content_width(buf.get_width());
+        self.inner.borrow_mut().scrollable.set_min_content_height(buf.get_height());
+        self.inner.borrow_mut().source_buf.replace(RefCell::new((*buf).clone()));
+        let scale = self.inner.borrow().zoom.get();
+        if scale != 0.0 {
+            self.inner.borrow().apply_scale();
+        }
+        else {
+            self.inner.borrow().image.set_from_pixbuf(Some(&buf));
         }
     }
 
@@ -84,14 +87,12 @@ impl ImageViewer {
         scrollable.set_kinetic_scrolling(false);
         scrollable.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
         scrollable.set_policy(gtk::PolicyType::Automatic, gtk::PolicyType::Automatic);
-        scrollable.set_min_content_width(800);
-        scrollable.set_min_content_height(600);
         let mmb = Rc::new(Cell::new(Option::<(f64, f64)>::None));
         let cursor = Rc::new(Cell::new((0.0, 0.0)));
         let zoom = Rc::new(Cell::new(0f64));
         let inner = Rc::new(RefCell::new(InnerImpl {
             image,
-            zoom_buf: None,
+            source_buf: None,
             scrollable,
             zoom,
             mmb,
@@ -145,7 +146,10 @@ impl ImageViewer {
         let _inner = Rc::clone(&inner);
         inner.borrow().scrollable.connect_scroll_event(move |_, e| {
             let (_, zoom) = e.get_scroll_deltas().unwrap();
-            _inner.borrow().scale_buf(zoom);
+            let fac = 0.1 * zoom;
+            let incr = _inner.borrow_mut().zoom.get() + fac;
+            _inner.borrow_mut().zoom.replace(incr);
+            _inner.borrow().apply_scale();
             glib::signal::Inhibit(true)
         });
         Self { inner }
