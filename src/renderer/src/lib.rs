@@ -134,7 +134,6 @@ where
                 event(RenderEvent::Percent(
                     ((1.0 - buckets_left as f32 / total_buckets as f32) * 100.0) as u8,
                 ));
-                let rng = rand::rngs::SmallRng::from_entropy();
                 // let sampler = create_sampler(num_samples, settings.distribution, rng);
                 let mut rng = rand::rngs::SmallRng::from_entropy();
                 // let mut samples_iter = sampler.samples();

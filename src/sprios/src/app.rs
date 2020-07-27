@@ -49,7 +49,7 @@ impl App {
 
         // Sampler
         let sampler = ComboBoxText::new();
-        sampler.append_text("Jittered");
+        // sampler.append_text("Jittered");
         sampler.append_text("Random");
         sampler.set_active(Some(0));
         let sampler_label = Label::new(Some("Sampler"));
